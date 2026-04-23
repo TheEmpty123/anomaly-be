@@ -183,20 +183,16 @@ Truy cập tại: **http://localhost:8000/api/docs**
 ### File `.env` - Biến Môi Trường
 
 ```dotenv
-# 0. SSH TUNNEL
-ssh -N -L 5432:172.17.0.1:5432 dev-1@0.tcp.ap.ngrok.io -p 12721
-# Password: 1
-
 # 1. DATA WAREHOUSE (Cho AI lấy data OHLCV)
-DWH_USER=readonly_api2
-DWH_PASSWORD=dataforai
+DWH_USER=
+DWH_PASSWORD=
 DWH_HOST=localhost          # SSH Tunnel forward to 5432
 DWH_PORT=5432
 DWH_NAME=core_data_warehouse
 
 # 2. DATA MART (Cho Frontend API)
-DM_USER=api_readonly
-DM_PASSWORD=thisisapassword
+DM_USER=
+DM_PASSWORD=
 DM_HOST=localhost           # SSH Tunnel forward to 5432
 DM_PORT=5432
 DM_NAME=stellar_dm
