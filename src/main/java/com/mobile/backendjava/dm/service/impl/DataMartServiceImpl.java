@@ -1,0 +1,51 @@
+package com.mobile.backendjava.dm.service.impl;
+
+import com.mobile.backendjava.dm.repository.DataMartRepository;
+import com.mobile.backendjava.dm.service.DataMartService;
+import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.Map;
+/**
+ * This file is a template, DO NOT MODIFY OR USE IT
+ */
+@Service
+public class DataMartServiceImpl implements DataMartService {
+
+    private final DataMartRepository repository;
+
+    public DataMartServiceImpl(DataMartRepository repository) {
+        this.repository = repository;
+    }
+
+    @Override
+    public int ping() {
+        return repository.ping();
+    }
+
+    @Override
+    public Map<String, Object> info() {
+        return repository.info();
+    }
+
+    @Override
+    public List<Map<String, Object>> getSectorRRG(String regime, String benchmark, Integer dateSk) {
+        // Validate and normalize regime using enum; return empty if invalid
+        com.mobile.backendjava.dm.model.Regime r = com.mobile.backendjava.dm.model.Regime.fromString(regime);
+        if (r == null) {
+            return List.of();
+        }
+        // Delegate to repository; when dateSk is null, repository returns the latest available date_sk
+        return repository.getSectorRRG(r.name(), benchmark, dateSk);
+    }
+
+    @Override
+    public Map<String, Object> getMarketStructure(String timeframe, String benchmark, Integer dateSk, String regime) {
+        return repository.getMarketStructure(timeframe, benchmark, dateSk, regime);
+    }
+
+    @Override
+    public List<Map<String, Object>> getSectorPerformance(String timeframe, String sectorCode) {
+        return repository.getSectorPerformance(timeframe, sectorCode);
+    }
+}
