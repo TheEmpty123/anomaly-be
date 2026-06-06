@@ -1,5 +1,6 @@
 package com.mobile.backendjava.dm.dto.rrg;
 
+import com.fasterxml.jackson.annotation.JsonRawValue;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -23,6 +24,7 @@ public class RRGItemDTO {
     private String sectorName;
     private String sectorNameEn;
     private String blockType;
+    @JsonRawValue
     private String topStocksByCap; // JSON string
     private String benchmark;
     private LocalDateTime ingestionTime;
