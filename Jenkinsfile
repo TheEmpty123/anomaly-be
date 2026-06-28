@@ -16,6 +16,8 @@ pipeline {
 
         stage('Read Version') {
             steps {
+                sh "chmod +x mvnw"
+
                 script {
                     VERSION = sh(
                         script: "./mvnw help:evaluate -Dexpression=project.version -q -DforceStdout",
