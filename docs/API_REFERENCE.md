@@ -28,9 +28,9 @@
 Returns foreign flow time-series data by symbol, sector, or market. This supports line charts, cumulative foreign flow charts, and comparison between `priceIndex100` and `benchmarkIndex100`.
 
 **Parameters:**
-- `entityType` *(required)*: examples `SYMBOL`, `SECTOR`, `MARKET`
+- `entityType` *(required)*: examples `STOCK`, `MARKET`
 - `entityCode` *(required)*: examples `FPT`, `BANK`, `VNINDEX`
-- `timeframe` *(required)*: examples `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`
+- `timeframe` *(required)*: examples `1M`, `3M`, `6M`, `1Y`
 - `fromDateSk` *(optional)*: inclusive start date in `YYYYMMDD`
 - `toDateSk` *(optional)*: inclusive end date in `YYYYMMDD`
 - `limit` *(optional)*: defaults to `500`, max `1000`
