@@ -9,10 +9,15 @@
 - Heatmap (Realtime qua SSE)
   - GET /stellar-api/v1/heatmap/snapshot — Ảnh chụp heatmap hiện tại (từ Redis)
   - GET /stellar-api/v1/heatmap/stream — Luồng sự kiện Server-Sent Events (SSE) cập nhật realtime
+- Market Breadth
+  - GET /stellar-api/v1/market/breadth — Độ rộng thị trường hiện tại từ Redis
+  - GET /stellar-api/v1/market/breadth/history — Độ rộng thị trường theo ngày
 - OHLCV
   - GET /stellar-api/v1/ohlcv/{symbol} — Lịch sử OHLCV theo mã
   - GET /stellar-api/v1/ohlcv — OHLCV cho tất cả mã trong một ngày
   - GET /stellar-api/v1/ohlcv/latest — OHLCV mới nhất cho tất cả mã
+- Anomalies
+  - GET /stellar-api/v1/anomalies — Danh sách anomaly và kết quả AI analysis
 - Symbols
   - GET /stellar-api/v1/symbols — Danh sách metadata cơ bản của mã
 - Market Structure
@@ -28,9 +33,9 @@
 Returns foreign flow time-series data by symbol, sector, or market. This supports line charts, cumulative foreign flow charts, and comparison between `priceIndex100` and `benchmarkIndex100`.
 
 **Parameters:**
-- `entityType` *(required)*: examples `SYMBOL`, `SECTOR`, `MARKET`
+- `entityType` *(required)*: examples `STOCK`, `MARKET`
 - `entityCode` *(required)*: examples `FPT`, `BANK`, `VNINDEX`
-- `timeframe` *(required)*: examples `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`
+- `timeframe` *(required)*: examples `1M`, `3M`, `6M`, `1Y`
 - `fromDateSk` *(optional)*: inclusive start date in `YYYYMMDD`
 - `toDateSk` *(optional)*: inclusive end date in `YYYYMMDD`
 - `limit` *(optional)*: defaults to `500`, max `1000`
@@ -52,10 +57,6 @@ curl "http://localhost:8080/stellar-api/v1/foreign-flow/chart?entityType=SYMBOL&
     "sellVal": 9000000000,
     "netVal": 3000000000,
     "cumulativeNetVal": 15000000000,
-    "buyVol": 100000,
-    "sellVol": 80000,
-    "netVol": 20000,
-    "cumulativeNetVol": 120000,
     "close": 123400,
     "priceIndex100": 108.5,
     "benchmarkCode": "VNINDEX",
@@ -65,6 +66,27 @@ curl "http://localhost:8080/stellar-api/v1/foreign-flow/chart?entityType=SYMBOL&
   }
 ]
 ```
+
+**Response fields and chart usage:**
+
+| Field | Meaning | Chart usage |
+|-------|---------|-------------|
+| `entityType` | Loai entity cua chuoi du lieu, vi du `SYMBOL`, `SECTOR`, `MARKET`. | Context/filter label. |
+| `entityCode` | Ma entity, vi du `FPT`, `BANK`, `VNINDEX`. | Series label. |
+| `dateSk` | Ngay du lieu dang `YYYYMMDD`. | **Required** for X-axis. |
+| `timeframe` | Khung thoi gian cua chuoi du lieu. | Context label/filter. |
+| `buyVal` | Gia tri mua cua khoi ngoai. | **Required** for buy/sell bar or stacked chart. |
+| `sellVal` | Gia tri ban cua khoi ngoai. | **Required** for buy/sell bar or stacked chart. |
+| `netVal` | Gia tri mua rong: buy minus sell. | **Required** for net-flow line/bar chart. |
+| `cumulativeNetVal` | Luy ke mua rong den ngay hien tai trong timeframe. | **Required** for cumulative flow line chart. |
+| `close` | Gia dong cua entity neu co. | Price overlay or tooltip. |
+| `priceIndex100` | Gia entity quy ve moc 100. | **Required** for relative performance chart. |
+| `benchmarkCode` | Ma benchmark dung de so sanh. | Legend/context. |
+| `benchmarkClose` | Gia dong cua benchmark. | Tooltip/context. |
+| `benchmarkIndex100` | Benchmark quy ve moc 100. | **Required** for relative performance chart. |
+| `ingestionTime` | Thoi diem cache/ETL ghi du lieu. | Debug/staleness indicator. |
+
+Important chart fields: `dateSk`, `netVal`, `cumulativeNetVal`, `buyVal`, `sellVal`, `priceIndex100`, `benchmarkIndex100`.
 
 **Status Codes:** `200 OK` | `400 Bad Request`
 
@@ -89,28 +111,52 @@ curl "http://localhost:8080/stellar-api/v1/foreign-flow/heatmap?dateSk=20260704&
 ```json
 [
   {
-    "dateSk": 20260704,
-    "timeframe": "1D",
-    "symbol": "FPT",
-    "symbolSk": 123,
-    "netVal": 3000000000,
-    "cumulativeNetVal": 15000000000,
-    "netVol": 20000,
-    "cumulativeNetVol": 120000,
-    "close": 123400,
-    "pctChange": 1.25,
-    "volume": 1000000,
-    "value": 123400000000,
-    "marketCap": 150000000000000,
-    "marketWeight": 0.025,
-    "rankNetBuy": 1,
-    "rankNetSell": null,
-    "intensity": 0.85,
-    "direction": "BUY",
-    "ingestionTime": "2026-07-04T17:30:00"
+    "dateSk": 20260703,
+    "timeframe": "1M",
+    "symbol": "HPG",
+    "symbolSk": 76,
+    "netVal": -40537096600.0,
+    "cumulativeNetVal": -357382926800.0,
+    "close": 23250.0,
+    "pctChange": -0.6410256410256387,
+    "volume": 15963512,
+    "value": 372335129700,
+    "marketCap": 196298925090000,
+    "marketWeight": 0.0216431577863547,
+    "rankNetBuy": 1529,
+    "rankNetSell": 4,
+    "intensity": 0.1702643478391268,
+    "direction": "SELL",
+    "ingestionTime": "2026-07-03T10:39:48.968762"
   }
 ]
 ```
+
+**Response fields and heatmap usage:**
+
+| Field | Meaning | Heatmap/chart usage |
+|-------|---------|---------------------|
+| `dateSk` | Ngay du lieu dang `YYYYMMDD`. | Context/filter label. |
+| `timeframe` | Khung thoi gian aggregate, vi du `1M`. | Context/filter label. |
+| `symbol` | Ma co phieu/index. | **Required** as tile id and label. |
+| `symbolSk` | Surrogate key cua symbol trong data mart. | Internal id, useful for drill-down. |
+| `netVal` | Gia tri mua rong cua khoi ngoai trong ky. | **Required** for color/tooltip; positive is net buy, negative is net sell. |
+| `cumulativeNetVal` | Luy ke mua rong trong timeframe. | **Required** for stronger signal/ranking tooltip. |
+| `netVol` | Khoi luong mua rong neu ETL co data. | Optional; ignore when null. |
+| `cumulativeNetVol` | Luy ke khoi luong mua rong neu ETL co data. | Optional; ignore when null. |
+| `close` | Gia dong/last price tai ngay snapshot. | Tooltip and detail panel. |
+| `pctChange` | % thay doi gia. | Secondary color/tooltip for price move. |
+| `volume` | Khoi luong khop lenh. | Tooltip/liquidity context. |
+| `value` | Gia tri giao dich. | Tooltip/liquidity context. |
+| `marketCap` | Von hoa thi truong. | **Recommended** for tile size. |
+| `marketWeight` | Ty trong von hoa/thi truong. | **Recommended** for tile size or weighting. |
+| `rankNetBuy` | Thu hang mua rong; so nho hon la mua rong manh hon. | Sort/filter top net-buy. |
+| `rankNetSell` | Thu hang ban rong; so nho hon la ban rong manh hon. | Sort/filter top net-sell. |
+| `intensity` | Do manh tin hieu da normalize. | **Required** for heatmap color opacity/intensity. |
+| `direction` | Huong dong tien: `BUY`, `SELL`, `NEUTRAL`. | **Required** for color palette. |
+| `ingestionTime` | Thoi diem cache/ETL ghi du lieu. | Debug/staleness indicator. |
+
+Important heatmap fields: `symbol`, `direction`, `intensity`, `netVal`, `cumulativeNetVal`, `marketCap` or `marketWeight`.
 
 **Status Codes:** `200 OK` | `400 Bad Request`
 
@@ -149,17 +195,24 @@ Ví dụ phản hồi (200):
 ]
 ```
 
-Fields (tham khảo):
-- symbol: mã cổ phiếu
-- price: giá khớp hiện tại
-- refPrice: giá tham chiếu
-- pctChange: % thay đổi so với tham chiếu
-- volume: khối lượng
-- txnValue: giá trị giao dịch
-- marketCap: vốn hóa
-- status: trạng thái (TRADING, HALTED, ...)
-- sector, industry, exchange: phân loại
-- lastUpdated: thời điểm cập nhật ISO-8601
+**Response fields and realtime heatmap usage:**
+
+| Field | Meaning | Heatmap usage |
+|-------|---------|---------------|
+| `symbol` | Mã cổ phiếu. | **Required** as tile id and update key. |
+| `price` | Giá khớp/last price hiện tại. | Tile label or tooltip. |
+| `refPrice` | Giá tham chiếu. | Tooltip and price-change calculation fallback. |
+| `pctChange` | % thay đổi so với tham chiếu. | **Required** for price heatmap color. |
+| `volume` | Khối lượng giao dịch. | Tooltip/liquidity context. |
+| `txnValue` | Giá trị giao dịch. | Tooltip/liquidity context. |
+| `marketCap` | Vốn hóa. | **Recommended** for tile size. |
+| `status` | Trạng thái giao dịch, ví dụ `TRADING`, `HALTED`. | Style disabled/paused tiles. |
+| `sector` | Ngành/cụm sector. | Grouping/filter. |
+| `industry` | Ngành chi tiết. | Tooltip/filter. |
+| `exchange` | Sàn giao dịch. | Filter/grouping. |
+| `lastUpdated` | Thời điểm update ISO-8601. | Staleness indicator. |
+
+Important realtime heatmap fields: `symbol`, `pctChange`, `marketCap`, `price`, `volume`, `txnValue`, `lastUpdated`.
 
 ---
 
@@ -222,6 +275,74 @@ Ghi chú:
 
 ---
 
+## Market Breadth APIs
+
+### GET /stellar-api/v1/market/breadth
+Returns current market breadth from Redis.
+
+### GET /stellar-api/v1/market/breadth/history
+Returns market breadth history for a date.
+
+**Parameters:**
+- `date` *(optional)*: date key, usually `YYYYMMDD`; defaults to today for history if omitted.
+
+**Typical response fields:**
+
+| Field | Meaning | Chart usage |
+|-------|---------|-------------|
+| `advance` / `advances` | Number of advancing stocks. | **Required** for breadth stacked bar/donut. |
+| `decline` / `declines` | Number of declining stocks. | **Required** for breadth stacked bar/donut. |
+| `unchanged` / `noChange` / `no_change` | Number of unchanged stocks. | **Required** for neutral segment. |
+| `total` / `totalStocks` / `total_stocks` | Total counted stocks. | Denominator for percentages. |
+| `advancePct` | Advancing percentage, added by backend for history map responses. | **Required** for percentage breadth chart. |
+| `declinePct` | Declining percentage, added by backend for history map responses. | **Required** for percentage breadth chart. |
+| `unchangedPct` | Unchanged percentage, added by backend for history map responses. | Neutral percentage segment. |
+| Other Redis fields | Extra breadth dimensions from upstream feed. | Optional tooltip/context. |
+
+Important breadth fields: `advance`, `decline`, `unchanged`, `total`, `advancePct`, `declinePct`.
+
+**Status Codes:** `200 OK` | `204 No Content`
+
+---
+
+## Anomaly APIs
+
+### GET /stellar-api/v1/anomalies
+Returns anomaly rows and AI analysis labels.
+
+**Response (200):**
+```json
+[
+  {
+    "symbol": "FPT",
+    "date": "2026-07-04",
+    "ai_analysis": {
+      "anomaly_score": 0.92,
+      "is_anomaly": true,
+      "status_label": "HIGH_RISK"
+    },
+    "explanation": "Unusual price/volume movement detected."
+  }
+]
+```
+
+**Response fields and usage:**
+
+| Field | Meaning | UI/chart usage |
+|-------|---------|----------------|
+| `symbol` | Mã cổ phiếu. | **Required** for table row and drill-down. |
+| `date` | Ngày phát hiện anomaly. | **Required** for timeline/table sorting. |
+| `ai_analysis.anomaly_score` | Điểm bất thường, thường dùng thang 0-1. | **Required** for severity color/score chart. |
+| `ai_analysis.is_anomaly` | Cờ xác nhận có bất thường. | Filter/highlight rows. |
+| `ai_analysis.status_label` | Nhãn trạng thái từ model. | Badge/severity label. |
+| `explanation` | Giải thích ngắn về anomaly. | Tooltip/detail panel. |
+
+Important anomaly fields: `symbol`, `date`, `ai_analysis.anomaly_score`, `ai_analysis.is_anomaly`, `ai_analysis.status_label`.
+
+**Status Codes:** `200 OK`
+
+---
+
 ## OHLCV APIs
 
 ### GET /stellar-api/v1/ohlcv/{symbol}
@@ -261,6 +382,27 @@ curl "http://localhost:8080/stellar-api/v1/ohlcv/FPT?timeframe=1D&limit=500"
 ]
 ```
 
+**Response fields and chart usage:**
+
+| Field | Meaning | Chart usage |
+|-------|---------|-------------|
+| `symbol` | Mã cổ phiếu. | Series label and route key. |
+| `symbolSk` | Surrogate key của symbol trong data mart. | Internal id/drill-down. |
+| `dateSk` | Ngày dạng `YYYYMMDD`. | **Required** for X-axis if not using `fullDate`. |
+| `fullDate` | Ngày ISO `YYYY-MM-DD`. | **Required** for X-axis in UI. |
+| `timeframe` | Khung thời gian, hiện tại dữ liệu EOD dùng `1d`. | Context/filter label. |
+| `timeSk` | Khóa thời gian trong ngày; EOD thường là `0`. | Intraday extension/context. |
+| `open` | Giá mở cửa. | **Required** for candlestick/OHLC chart. |
+| `high` | Giá cao nhất. | **Required** for candlestick/OHLC chart. |
+| `low` | Giá thấp nhất. | **Required** for candlestick/OHLC chart. |
+| `close` | Giá đóng cửa. | **Required** for candlestick/line chart and return calculation. |
+| `volume` | Khối lượng giao dịch. | **Required** for volume histogram. |
+| `value` | Giá trị giao dịch. | Liquidity tooltip/table. |
+| `marketCap` | Vốn hóa. | Market heatmap tile size / ranking. |
+| `marketWeight` | Tỷ trọng thị trường. | Market heatmap weighting / ranking. |
+
+Important OHLCV chart fields: `fullDate` or `dateSk`, `open`, `high`, `low`, `close`, `volume`.
+
 **Status Codes:** `200 OK` | `400 Bad Request`
 
 ---
@@ -280,6 +422,8 @@ curl "http://localhost:8080/stellar-api/v1/ohlcv?dateSk=20260704&timeframe=1D&li
 
 **Status Codes:** `200 OK` | `400 Bad Request`
 
+Response schema is the same as `GET /stellar-api/v1/ohlcv/{symbol}`. For market overview/heatmap, prioritize `symbol`, `close`, `volume`, `value`, `marketCap`, `marketWeight`.
+
 ---
 
 ### GET /stellar-api/v1/ohlcv/latest
@@ -295,6 +439,8 @@ curl "http://localhost:8080/stellar-api/v1/ohlcv/latest?timeframe=1D&limit=199"
 ```
 
 **Status Codes:** `200 OK`
+
+Response schema is the same as `GET /stellar-api/v1/ohlcv/{symbol}`. Use this endpoint when the frontend needs the latest available trading date automatically.
 
 ---
 
@@ -322,6 +468,18 @@ curl "http://localhost:8080/stellar-api/v1/symbols?activeOnly=true&limit=500"
   }
 ]
 ```
+
+**Response fields and usage:**
+
+| Field | Meaning | Usage |
+|-------|---------|-------|
+| `symbolSk` | Surrogate key của symbol trong data mart. | Internal id/drill-down. |
+| `symbol` | Mã cổ phiếu. | **Required** for selectors, routing, chart query key. |
+| `isActive` | Symbol còn active hay không. | Filter inactive symbols. |
+| `sharesOutstanding` | Số cổ phiếu lưu hành. | Market-cap fallback / fundamentals tooltip. |
+| `freefloat` | Tỷ lệ free-float. | Liquidity/freefloat weighting if needed. |
+
+Important selector fields: `symbol`, `symbolSk`, `isActive`.
 
 **Status Codes:** `200 OK`
 
@@ -436,6 +594,12 @@ Latest market structure snapshot by timeframe.
 | `coreBlocks` | Hiển thị **các khối chiếm ưu thế** | Danh sách các khối kinh doanh |
 | `topEcosystemName` | Hiển thị **hệ sinh thái hàng đầu** | Tên công ty/tập đoàn lớn |
 | `sectorRankings` | Hiển thị **danh sách xếp hạng ngành** | Sắp xếp theo `latest_strength` giảm dần |
+
+**Chart/display priority:**
+- Market-structure summary card: `marketStructureCode`, `marketStructureLabel`, `dateSk`, `timeframe`, `benchmark`.
+- Core sector/block view: `coreSectors`, `coreBlocks`.
+- Ranking tables/charts: `sectorRankings`, `ecosystemRankings`.
+- Tooltip/context: `topEcosystemCode`, `topEcosystemName`, `ingestionTime`.
 
 ---
 
@@ -568,6 +732,13 @@ Sector RRG items by regime.
 | `phase` | Màu điểm | LEADING (xanh), IMPROVING (vàng), WEAKENING (cam), LAGGING (đỏ) |
 | `blockType` | Phân loại | Dùng để nhóm hoặc lọc ngành |
 
+**Chart/display priority:**
+- RRG scatter position: `rm` as X-axis, `rs` as Y-axis.
+- Point color: `phase`.
+- Point label/tooltip: `sectorCode`, `sectorName`, `sectorNameEn`, `blockType`.
+- Bubble size or ranking: `totalMarketCap`, `totalFreefloatMarketCap`, `avgMarketWeight`, `liquidityScore`.
+- Drill-down tooltip: `topStocksByCap`, `stockCount`, `totalStocks`, `totalValue`, `totalVolume`.
+
 ---
 
 ### GET /stellar-api/v1/sector-performance
@@ -641,6 +812,12 @@ Latest sector performance by timeframe.
 | `sectorName` (nếu có) | Tiêu đề đầy đủ | Tên ngành tiếng Việt nếu API trả về |
 | `blockType` | Phân loại màu | Dùng để phân biệt các nhóm ngành |
 | `timeframe` | Khoảng thời gian | Hiển thị "1 Tháng", "3 Tháng", v.v. |
+
+**Chart/display priority:**
+- Line chart: `chartData[].date`, `chartData[].value`.
+- Series label: `sectorCode`.
+- Grouping/color: `blockType`.
+- Context: `timeframe`, `ingestionTime`.
 
 ---
 ## Lưu ý cho Frontend khi sử dụng Heatmap Realtime SSE
