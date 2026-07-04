@@ -28,6 +28,9 @@ env:
   REDIS_HOST: redis
   REDIS_PORT: 6379
   MARKET_PUBSUB_CHANNEL: market_channel
+  STELLAR_JWT_ENABLED: "true"
+  STELLAR_JWT_ISSUER: stellar-api
+  STELLAR_JWT_AUDIENCE: stellar-backend
 
 secret:
   name: backend-db-secret

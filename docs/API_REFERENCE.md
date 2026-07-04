@@ -2,6 +2,33 @@
 
 ## Stellar API - `/stellar-api/v1`
 
+## Authentication
+
+All endpoints under `/stellar-api/v1/**` require a JWT Bearer Token.
+
+REST API header:
+```http
+Authorization: Bearer <JWT_TOKEN>
+```
+
+Example:
+```bash
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+https://api.staging-stellar.io.vn/stellar-api/v1/ohlcv/latest
+```
+
+SSE browser usage:
+```text
+/stellar-api/v1/heatmap/stream?token=<JWT_TOKEN>
+```
+
+Browser `EventSource` does not support custom `Authorization` headers, so the SSE stream endpoint also accepts the JWT in the `token` query parameter. This query-param token fallback is only supported for `/stellar-api/v1/heatmap/stream`.
+
+If the token is missing or invalid, the API returns:
+```http
+401 Unauthorized
+```
+
 ## Tổng hợp API hiện có
 - Foreign Flow
   - GET /stellar-api/v1/foreign-flow/chart — Dữ liệu chuỗi thời gian theo mã cổ phiếu/ngành/thị trường
