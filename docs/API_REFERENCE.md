@@ -16,6 +16,10 @@
   - GET /stellar-api/v1/ohlcv/{symbol} — Lịch sử OHLCV theo mã
   - GET /stellar-api/v1/ohlcv — OHLCV cho tất cả mã trong một ngày
   - GET /stellar-api/v1/ohlcv/latest — OHLCV mới nhất cho tất cả mã
+- Index OHLCV
+  - GET /stellar-api/v1/index-ohlcv/{symbol} - Index OHLCV history by symbol
+  - GET /stellar-api/v1/index-ohlcv - Index OHLCV rows by date
+  - GET /stellar-api/v1/index-ohlcv/latest - Latest index OHLCV rows
 - Anomalies
   - GET /stellar-api/v1/anomalies — Danh sách anomaly và kết quả AI analysis
 - Symbols
@@ -441,6 +445,103 @@ curl "http://localhost:8080/stellar-api/v1/ohlcv/latest?timeframe=1D&limit=199"
 **Status Codes:** `200 OK`
 
 Response schema is the same as `GET /stellar-api/v1/ohlcv/{symbol}`. Use this endpoint when the frontend needs the latest available trading date automatically.
+
+---
+
+## Index OHLCV APIs
+
+### GET /stellar-api/v1/index-ohlcv/{symbol}
+Returns historical OHLCV rows for one index symbol, for example `VNINDEX`, `HNXINDEX`, or `UPCOMINDEX`.
+
+**Parameters:**
+- `timeframe` *(optional)*: defaults to `1d`
+- `fromDateSk` *(optional)*: inclusive start date in `YYYYMMDD`
+- `toDateSk` *(optional)*: inclusive end date in `YYYYMMDD`
+- `limit` *(optional)*: defaults to `500`, max `5000`
+- `order` *(optional)*: defaults to `asc`; accepted values: `asc`, `desc`
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/index-ohlcv/VNINDEX?timeframe=1d&limit=500"
+```
+
+**Response (200):**
+```json
+[
+  {
+    "symbol": "VNINDEX",
+    "symbolSk": 180,
+    "dateSk": 20260704,
+    "fullDate": "2026-07-04",
+    "timeframe": "1d",
+    "timeSk": 0,
+    "open": 1280.5,
+    "high": 1294.2,
+    "low": 1278.1,
+    "close": 1290.4,
+    "volume": 123456789,
+    "value": 4567890000000
+  }
+]
+```
+
+**Response fields and chart usage:**
+
+| Field | Meaning | Chart usage |
+|-------|---------|-------------|
+| `symbol` | Index code. | Series label and query key. |
+| `symbolSk` | Surrogate key of the index symbol in data mart. | Internal id/drill-down. |
+| `dateSk` | Date key in `YYYYMMDD`. | **Required** for X-axis if not using `fullDate`. |
+| `fullDate` | ISO date `YYYY-MM-DD`. | **Required** for X-axis in UI. |
+| `timeframe` | Data timeframe, currently usually `1d`. | Context/filter label. |
+| `timeSk` | Time key; EOD usually uses `0`. | Intraday extension/context. |
+| `open` | Opening index value. | **Required** for candlestick/OHLC chart. |
+| `high` | Highest index value. | **Required** for candlestick/OHLC chart. |
+| `low` | Lowest index value. | **Required** for candlestick/OHLC chart. |
+| `close` | Closing index value. | **Required** for candlestick/line chart and return calculation. |
+| `volume` | Matched volume for the index universe if available. | Volume histogram / tooltip. |
+| `value` | Trading value for the index universe if available. | Liquidity chart / tooltip. |
+
+Important index chart fields: `fullDate` or `dateSk`, `open`, `high`, `low`, `close`, `volume`, `value`.
+
+**Status Codes:** `200 OK` | `400 Bad Request`
+
+---
+
+### GET /stellar-api/v1/index-ohlcv
+Returns index OHLCV rows for all index symbols on one date.
+
+**Parameters:**
+- `dateSk` *(required)*: date in `YYYYMMDD`
+- `timeframe` *(optional)*: defaults to `1d`
+- `limit` *(optional)*: defaults to `100`, max `1000`
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/index-ohlcv?dateSk=20260704&timeframe=1d&limit=100"
+```
+
+**Status Codes:** `200 OK` | `400 Bad Request`
+
+Response schema is the same as `GET /stellar-api/v1/index-ohlcv/{symbol}`. For index overview charts, prioritize `symbol`, `close`, `volume`, and `value`.
+
+---
+
+### GET /stellar-api/v1/index-ohlcv/latest
+Returns index OHLCV rows for all index symbols on the latest available `date_sk` for the requested timeframe.
+
+**Parameters:**
+- `timeframe` *(optional)*: defaults to `1d`
+- `limit` *(optional)*: defaults to `100`, max `1000`
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/index-ohlcv/latest?timeframe=1d&limit=100"
+```
+
+**Status Codes:** `200 OK`
+
+Response schema is the same as `GET /stellar-api/v1/index-ohlcv/{symbol}`.
 
 ---
 
