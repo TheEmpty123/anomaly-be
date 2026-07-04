@@ -7,7 +7,6 @@ import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.UUID;
 import java.util.function.Supplier;
 
 @Service
@@ -31,7 +30,7 @@ public abstract class AService {
 
     protected <T> T runTask(String taskName, String taskDetails, Supplier<T> task) {
         String currentTaskId = TaskLogContext.getTaskId();
-        String taskId = currentTaskId == null ? UUID.randomUUID().toString() : currentTaskId;
+        String taskId = currentTaskId == null ? TaskLogContext.nextTaskId() : currentTaskId;
         boolean rootTask = currentTaskId == null;
         long startedAt = System.currentTimeMillis();
         if (rootTask) {
