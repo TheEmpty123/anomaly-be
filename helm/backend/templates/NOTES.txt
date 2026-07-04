@@ -1,0 +1,10 @@
+Backend has been deployed.
+
+Release: {{ .Release.Name }}
+Namespace: {{ .Release.Namespace }}
+
+Service name:
+{{ include "backend.fullname" . }}
+
+Service port:
+{{ .Values.service.port }}

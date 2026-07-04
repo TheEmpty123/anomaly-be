@@ -1,4 +1,4 @@
-package com.mobile.backendjava.dm.Utils;
+package com.mobile.backendjava.dm.utils;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
