@@ -19,8 +19,7 @@ public interface StockOhlcvRepository extends JpaRepository<StockOhlcv, StockOhl
             join fetch o.symbol s
             join fetch o.date d
             where upper(s.symbol) = :symbol
-              and s.isCurrent = 1
-              and o.id.timeframe = :timeframe
+              and lower(o.id.timeframe) = :timeframe
               and (:fromDateSk is null or o.id.dateSk >= :fromDateSk)
               and (:toDateSk is null or o.id.dateSk <= :toDateSk)
             """)
@@ -37,14 +36,13 @@ public interface StockOhlcvRepository extends JpaRepository<StockOhlcv, StockOhl
             join fetch o.symbol s
             join fetch o.date d
             where o.id.dateSk = :dateSk
-              and o.id.timeframe = :timeframe
-              and s.isCurrent = 1
+              and lower(o.id.timeframe) = :timeframe
             """)
     List<StockOhlcv> findMarketSnapshot(
             @Param("dateSk") Integer dateSk,
             @Param("timeframe") String timeframe,
             Pageable pageable);
 
-    @Query("select max(o.id.dateSk) from StockOhlcv o where o.id.timeframe = :timeframe")
+    @Query("select max(o.id.dateSk) from StockOhlcv o where lower(o.id.timeframe) = :timeframe")
     Integer findMaxDateSkByTimeframe(@Param("timeframe") String timeframe);
 }

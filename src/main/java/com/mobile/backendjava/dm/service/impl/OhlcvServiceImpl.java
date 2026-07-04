@@ -18,7 +18,7 @@ public class OhlcvServiceImpl extends AService implements OhlcvService {
     private static final int MAX_SYMBOL_LIMIT = 5000;
     private static final int DEFAULT_MARKET_LIMIT = 199;
     private static final int MAX_MARKET_LIMIT = 1000;
-    private static final String DEFAULT_TIMEFRAME = "1D";
+    private static final String DEFAULT_TIMEFRAME = "1d";
 
     private final StockOhlcvRepository stockOhlcvRepository;
 
@@ -81,7 +81,7 @@ public class OhlcvServiceImpl extends AService implements OhlcvService {
         if (timeframe == null || timeframe.isBlank()) {
             return DEFAULT_TIMEFRAME;
         }
-        return timeframe.trim();
+        return timeframe.trim().toLowerCase(Locale.ROOT);
     }
 
     private String normalizeOrder(String order) {
