@@ -19,12 +19,11 @@ public class AnomalyServiceImpl extends AService implements AnomalyService {
 
     @Override
     public void initLogger() {
-        log.setName(this.getClass().getSimpleName());
-        log.info("Initializing Logger");
+        super.initLogger();
     }
 
     @Override
     public List<AnomalyDTO> getAnomalies() {
-        return anomalyRepository.findAll();
+        return runTask("getAnomalies", anomalyRepository::findAll);
     }
 }

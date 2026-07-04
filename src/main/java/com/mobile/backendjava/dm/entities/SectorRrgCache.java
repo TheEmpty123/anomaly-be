@@ -52,4 +52,25 @@ public class SectorRrgCache {
 
     @Column(name = "ingestion_time")
     private LocalDateTime ingestionTime;
+
+    @Column(name = "total_volume")
+    private Long totalVolume;
+
+    @Column(name = "total_value")
+    private Long totalValue;
+
+    @Column(name = "total_market_cap")
+    private Long totalMarketCap;
+
+    @Column(name = "avg_market_cap")
+    private BigDecimal avgMarketCap;
+
+    @Column(name = "liquidity_score")
+    private BigDecimal liquidityScore;
+
+    @Column(name = "total_freefloat_market_cap")
+    private BigDecimal totalFreefloatMarketCap;
+
+    @Column(name = "avg_market_weight")
+    private BigDecimal avgMarketWeight;
 }
