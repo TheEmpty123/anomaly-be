@@ -25,3 +25,9 @@ resources:
 env:
   SPRING_PROFILES_ACTIVE: prod
   SPRING_DATASOURCE_URL: jdbc:postgresql://192.168.1.19:5432/stellar_dm
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  MARKET_PUBSUB_CHANNEL: market_channel
+
+secret:
+  name: backend-db-secret
