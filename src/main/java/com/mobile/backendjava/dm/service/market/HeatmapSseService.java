@@ -1,5 +1,6 @@
 package com.mobile.backendjava.dm.service.market;
 
+import com.mobile.backendjava.dm.service.impl.AService;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -13,28 +14,34 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
 @Service
-public class HeatmapSseService {
+public class HeatmapSseService extends AService {
 
     private static final long SSE_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(30);
     private final Set<SseEmitter> emitters = ConcurrentHashMap.newKeySet();
 
+    public HeatmapSseService() {
+        initLogger();
+    }
+
     public SseEmitter connect() {
-        SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
-        emitters.add(emitter);
-        emitter.onCompletion(() -> emitters.remove(emitter));
-        emitter.onTimeout(() -> emitters.remove(emitter));
-        emitter.onError(error -> emitters.remove(emitter));
-        send(emitter, "ping", Map.of("ts", Instant.now().toString()));
-        return emitter;
+        return runTask("connectHeatmapSse", () -> {
+            SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
+            emitters.add(emitter);
+            emitter.onCompletion(() -> emitters.remove(emitter));
+            emitter.onTimeout(() -> emitters.remove(emitter));
+            emitter.onError(error -> emitters.remove(emitter));
+            send(emitter, "ping", Map.of("ts", Instant.now().toString()));
+            return emitter;
+        });
     }
 
     public void broadcastQuote(String quoteJson) {
-        broadcast("quote", quoteJson);
+        runTask("broadcastHeatmapQuote", () -> broadcast("quote", quoteJson));
     }
 
     @Scheduled(fixedRate = 20000)
     public void heartbeat() {
-        broadcast("ping", Map.of("ts", Instant.now().toString()));
+        runTask("heartbeatHeatmapSse", () -> broadcast("ping", Map.of("ts", Instant.now().toString())));
     }
 
     private void broadcast(String eventName, Object data) {

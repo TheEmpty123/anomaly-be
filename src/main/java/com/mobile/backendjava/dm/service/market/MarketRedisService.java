@@ -2,6 +2,7 @@ package com.mobile.backendjava.dm.service.market;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mobile.backendjava.dm.dto.market.HeatmapQuoteDTO;
+import com.mobile.backendjava.dm.service.impl.AService;
 import org.springframework.data.redis.connection.DataType;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
@@ -18,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class MarketRedisService {
+public class MarketRedisService extends AService {
 
     private static final ZoneId MARKET_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter DATE_KEY_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
@@ -28,39 +29,42 @@ public class MarketRedisService {
     public MarketRedisService(StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
+        initLogger();
     }
 
     public List<HeatmapQuoteDTO> getHeatmapSnapshot() {
-        List<HeatmapQuoteDTO> quotes = new ArrayList<>();
-        try (Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match("stock:quote:*").count(500).build())) {
-            while (cursor.hasNext()) {
-                String quoteKey = cursor.next();
-                Map<String, Object> quote = readObject(quoteKey);
-                if (quote == null || quote.isEmpty()) {
-                    continue;
+        return runTask("getHeatmapSnapshot", () -> {
+            List<HeatmapQuoteDTO> quotes = new ArrayList<>();
+            try (Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match("stock:quote:*").count(500).build())) {
+                while (cursor.hasNext()) {
+                    String quoteKey = cursor.next();
+                    Map<String, Object> quote = readObject(quoteKey);
+                    if (quote == null || quote.isEmpty()) {
+                        continue;
+                    }
+                    String symbol = stringValue(firstNonNull(quote, "symbol", "ticker"));
+                    if (symbol == null || symbol.isBlank()) {
+                        symbol = quoteKey.substring("stock:quote:".length());
+                    }
+                    Map<String, Object> meta = readObject("stock:meta:" + symbol);
+                    Map<String, Object> merged = new LinkedHashMap<>();
+                    if (meta != null) {
+                        merged.putAll(meta);
+                    }
+                    merged.putAll(quote);
+                    quotes.add(toHeatmapQuote(symbol, merged));
                 }
-                String symbol = stringValue(firstNonNull(quote, "symbol", "ticker"));
-                if (symbol == null || symbol.isBlank()) {
-                    symbol = quoteKey.substring("stock:quote:".length());
-                }
-                Map<String, Object> meta = readObject("stock:meta:" + symbol);
-                Map<String, Object> merged = new LinkedHashMap<>();
-                if (meta != null) {
-                    merged.putAll(meta);
-                }
-                merged.putAll(quote);
-                quotes.add(toHeatmapQuote(symbol, merged));
             }
-        }
-        return quotes;
+            return quotes;
+        });
     }
 
     public Object getCurrentBreadth() {
-        return getBreadth(null, false);
+        return runTask("getCurrentBreadth", () -> getBreadth(null, false));
     }
 
     public Object getBreadthHistory(String date) {
-        return getBreadth(date, true);
+        return runTask("getBreadthHistory", () -> getBreadth(date, true));
     }
 
     private Object getBreadth(String date, boolean history) {
