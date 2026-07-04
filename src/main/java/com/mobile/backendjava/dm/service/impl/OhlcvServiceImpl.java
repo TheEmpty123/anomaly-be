@@ -18,7 +18,7 @@ public class OhlcvServiceImpl extends AService implements OhlcvService {
     private static final int MAX_SYMBOL_LIMIT = 5000;
     private static final int DEFAULT_MARKET_LIMIT = 199;
     private static final int MAX_MARKET_LIMIT = 1000;
-    private static final String DEFAULT_TIMEFRAME = "1D";
+    private static final String DEFAULT_TIMEFRAME = "1d";
 
     private final StockOhlcvRepository stockOhlcvRepository;
 
@@ -35,7 +35,15 @@ public class OhlcvServiceImpl extends AService implements OhlcvService {
     @Override
     public List<OhlcvDTO> getBySymbol(String symbol, String timeframe, Integer fromDateSk,
                                       Integer toDateSk, Integer limit, String order) {
-        return runTask("getOhlcvBySymbol", () -> {
+        return runTask("getOhlcvBySymbol",
+                details(
+                        detail("symbol", symbol),
+                        detail("timeframe", normalizeTimeframe(timeframe)),
+                        detail("fromDateSk", fromDateSk),
+                        detail("toDateSk", toDateSk),
+                        detail("limit", capLimit(limit, DEFAULT_SYMBOL_LIMIT, MAX_SYMBOL_LIMIT)),
+                        detail("order", order)),
+                () -> {
             String normalizedOrder = normalizeOrder(order);
             Sort sort = Sort.by(direction(normalizedOrder), "id.dateSk", "id.timeSk");
             PageRequest pageRequest = PageRequest.of(0, capLimit(limit, DEFAULT_SYMBOL_LIMIT, MAX_SYMBOL_LIMIT), sort);
@@ -53,12 +61,21 @@ public class OhlcvServiceImpl extends AService implements OhlcvService {
 
     @Override
     public List<OhlcvDTO> getByDate(Integer dateSk, String timeframe, Integer limit) {
-        return runTask("getOhlcvByDate", () -> getMarketSnapshot(dateSk, timeframe, limit));
+        return runTask("getOhlcvByDate",
+                details(
+                        detail("dateSk", dateSk),
+                        detail("timeframe", normalizeTimeframe(timeframe)),
+                        detail("limit", capLimit(limit, DEFAULT_MARKET_LIMIT, MAX_MARKET_LIMIT))),
+                () -> getMarketSnapshot(dateSk, timeframe, limit));
     }
 
     @Override
     public List<OhlcvDTO> getLatest(String timeframe, Integer limit) {
-        return runTask("getLatestOhlcv", () -> {
+        return runTask("getLatestOhlcv",
+                details(
+                        detail("timeframe", normalizeTimeframe(timeframe)),
+                        detail("limit", capLimit(limit, DEFAULT_MARKET_LIMIT, MAX_MARKET_LIMIT))),
+                () -> {
             String tf = normalizeTimeframe(timeframe);
             Integer latestDateSk = stockOhlcvRepository.findMaxDateSkByTimeframe(tf);
             if (latestDateSk == null) {
@@ -81,7 +98,7 @@ public class OhlcvServiceImpl extends AService implements OhlcvService {
         if (timeframe == null || timeframe.isBlank()) {
             return DEFAULT_TIMEFRAME;
         }
-        return timeframe.trim();
+        return timeframe.trim().toLowerCase(Locale.ROOT);
     }
 
     private String normalizeOrder(String order) {

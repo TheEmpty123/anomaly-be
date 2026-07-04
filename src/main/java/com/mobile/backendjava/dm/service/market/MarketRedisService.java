@@ -33,7 +33,7 @@ public class MarketRedisService extends AService {
     }
 
     public List<HeatmapQuoteDTO> getHeatmapSnapshot() {
-        return runTask("getHeatmapSnapshot", () -> {
+        return runTask("getHeatmapSnapshot", detail("redisPattern", "stock:quote:*"), () -> {
             List<HeatmapQuoteDTO> quotes = new ArrayList<>();
             try (Cursor<String> cursor = redisTemplate.scan(ScanOptions.scanOptions().match("stock:quote:*").count(500).build())) {
                 while (cursor.hasNext()) {
@@ -60,11 +60,11 @@ public class MarketRedisService extends AService {
     }
 
     public Object getCurrentBreadth() {
-        return runTask("getCurrentBreadth", () -> getBreadth(null, false));
+        return runTask("getCurrentBreadth", detail("date", normalizeDate(null)), () -> getBreadth(null, false));
     }
 
     public Object getBreadthHistory(String date) {
-        return runTask("getBreadthHistory", () -> getBreadth(date, true));
+        return runTask("getBreadthHistory", detail("date", normalizeDate(date)), () -> getBreadth(date, true));
     }
 
     private Object getBreadth(String date, boolean history) {

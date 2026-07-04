@@ -24,7 +24,7 @@ public class StellarOhlcvController {
     @GetMapping("/{symbol}")
     public ResponseEntity<List<OhlcvDTO>> getBySymbol(
             @PathVariable String symbol,
-            @RequestParam(required = false, defaultValue = "1D") String timeframe,
+            @RequestParam(required = false, defaultValue = "1d") String timeframe,
             @RequestParam(required = false) Integer fromDateSk,
             @RequestParam(required = false) Integer toDateSk,
             @RequestParam(required = false) Integer limit,
@@ -39,14 +39,14 @@ public class StellarOhlcvController {
     @GetMapping
     public ResponseEntity<List<OhlcvDTO>> getByDate(
             @RequestParam Integer dateSk,
-            @RequestParam(required = false, defaultValue = "1D") String timeframe,
+            @RequestParam(required = false, defaultValue = "1d") String timeframe,
             @RequestParam(required = false) Integer limit) {
         return ResponseEntity.ok(ohlcvService.getByDate(dateSk, timeframe, limit));
     }
 
     @GetMapping("/latest")
     public ResponseEntity<List<OhlcvDTO>> getLatest(
-            @RequestParam(required = false, defaultValue = "1D") String timeframe,
+            @RequestParam(required = false, defaultValue = "1d") String timeframe,
             @RequestParam(required = false) Integer limit) {
         return ResponseEntity.ok(ohlcvService.getLatest(timeframe, limit));
     }

@@ -24,7 +24,7 @@ public class HeatmapSseService extends AService {
     }
 
     public SseEmitter connect() {
-        return runTask("connectHeatmapSse", () -> {
+        return runTask("connectHeatmapSse", detail("activeEmittersBefore", emitters.size()), () -> {
             SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
             emitters.add(emitter);
             emitter.onCompletion(() -> emitters.remove(emitter));
@@ -36,12 +36,14 @@ public class HeatmapSseService extends AService {
     }
 
     public void broadcastQuote(String quoteJson) {
-        runTask("broadcastHeatmapQuote", () -> broadcast("quote", quoteJson));
+        runTask("broadcastHeatmapQuote",
+                details(detail("activeEmitters", emitters.size()), detail("payloadChars", quoteJson == null ? 0 : quoteJson.length())),
+                () -> broadcast("quote", quoteJson));
     }
 
     @Scheduled(fixedRate = 20000)
     public void heartbeat() {
-        runTask("heartbeatHeatmapSse", () -> broadcast("ping", Map.of("ts", Instant.now().toString())));
+        runSilentTask(() -> broadcast("ping", Map.of("ts", Instant.now().toString())));
     }
 
     private void broadcast(String eventName, Object data) {

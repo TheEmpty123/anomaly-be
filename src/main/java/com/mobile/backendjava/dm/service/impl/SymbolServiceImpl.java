@@ -30,7 +30,11 @@ public class SymbolServiceImpl extends AService implements SymbolService {
 
     @Override
     public List<SymbolDTO> getSymbols(Boolean activeOnly, Integer limit) {
-        return runTask("getSymbols", () -> {
+        return runTask("getSymbols",
+                details(
+                        detail("activeOnly", activeOnly),
+                        detail("limit", capLimit(limit))),
+                () -> {
             boolean filterActive = activeOnly == null || activeOnly;
             PageRequest pageRequest = PageRequest.of(0, capLimit(limit), Sort.by(Sort.Direction.ASC, "symbol"));
             return dimSymbolRepository.findSymbols(filterActive, pageRequest)
