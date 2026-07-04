@@ -24,6 +24,6 @@ public class AnomalyServiceImpl extends AService implements AnomalyService {
 
     @Override
     public List<AnomalyDTO> getAnomalies() {
-        return runTask("getAnomalies", anomalyRepository::findAll);
+        return runTask("getAnomalies", "repository=AnomalyRepository action=findAll", anomalyRepository::findAll);
     }
 }

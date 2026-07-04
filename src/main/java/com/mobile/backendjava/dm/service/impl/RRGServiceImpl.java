@@ -29,7 +29,9 @@ public class RRGServiceImpl extends AService implements RRGService {
 
     @Override
     public List<Map<String, Object>> getSectorRRG(String regime, String benchmark, Integer dateSk) {
-        return runTask("getSectorRRG", () -> {
+        return runTask("getSectorRRG",
+                details(detail("regime", regime), detail("benchmark", benchmark), detail("dateSk", dateSk)),
+                () -> {
             Regime r = Regime.fromString(regime);
             if (r == null) {
                 return List.of();

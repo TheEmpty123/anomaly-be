@@ -27,7 +27,9 @@ public class MarketStructureServiceImpl extends AService implements MarketStruct
 
     @Override
     public Map<String, Object> getLatest(String timeframe, String benchmark) {
-        return runTask("getLatestMarketStructure", () -> {
+        return runTask("getLatestMarketStructure",
+                details(detail("timeframe", timeframe), detail("benchmark", benchmark)),
+                () -> {
             Timeframe tf = Timeframe.fromString(timeframe);
             if (tf == null) {
                 return Map.of();
