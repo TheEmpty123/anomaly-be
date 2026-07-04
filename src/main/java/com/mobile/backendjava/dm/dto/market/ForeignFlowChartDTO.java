@@ -1,5 +1,6 @@
 package com.mobile.backendjava.dm.dto.market;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
 public class ForeignFlowChartDTO {
     private String entityType;
     private String entityCode;
@@ -21,10 +23,6 @@ public class ForeignFlowChartDTO {
     private BigDecimal sellVal;
     private BigDecimal netVal;
     private BigDecimal cumulativeNetVal;
-    private Long buyVol;
-    private Long sellVol;
-    private Long netVol;
-    private Long cumulativeNetVol;
     private BigDecimal close;
     private BigDecimal priceIndex100;
     private String benchmarkCode;
