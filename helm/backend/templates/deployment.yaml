@@ -36,7 +36,7 @@ spec:
             - name: REDIS_HOST
               value: "{{ .Values.env.REDIS_HOST }}"
             - name: REDIS_PORT
-              value: "{{ .Values.env.REDIS_PORT | quote }}"
+              value: {{ .Values.env.REDIS_PORT | quote }}
             - name: MARKET_PUBSUB_CHANNEL
               value: "{{ .Values.env.MARKET_PUBSUB_CHANNEL }}"
 
