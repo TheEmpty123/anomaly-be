@@ -1,4 +1,4 @@
-package com.mobile.backendjava.dm.Utils;
+package com.mobile.backendjava.dm.utils;
 import org.springframework.stereotype.Service;
 
 import java.text.SimpleDateFormat;
@@ -48,13 +48,14 @@ public class LogObj{
     }
 
     private String getLog(String pad, String extraName, Object msg){
-        var l = String.format("[%s] %s", pad, extraName);
+        String taskId = TaskLogContext.getTaskId();
         return String.format(
-                "(GL)[%s]%s " + "%s" + "%s" + "%s"
+                "(GL)[%s]%s " + "%s" + "%s" + "%s" + "%s"
                 , pad
                 , FormatDate(new Date())
                 , (_name != null ? "[" + _name + "]" : "")
                 , (!extraName.isEmpty() ? "[" + extraName + "]" : "")
+                , (taskId != null ? "[taskId=" + taskId + "]" : "")
                 , msg);
     }
 
