@@ -20,6 +20,9 @@ public class MarketRedisPubSubListener extends AService implements MessageListen
     @Override
     public void onMessage(Message message, byte[] pattern) {
         runTask("onMarketRedisMessage",
+                details(
+                        detail("channel", new String(message.getChannel(), StandardCharsets.UTF_8)),
+                        detail("payloadBytes", message.getBody().length)),
                 () -> heatmapSseService.broadcastQuote(new String(message.getBody(), StandardCharsets.UTF_8)));
     }
 }

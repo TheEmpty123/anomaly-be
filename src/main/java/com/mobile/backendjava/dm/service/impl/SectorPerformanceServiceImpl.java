@@ -29,7 +29,9 @@ public class SectorPerformanceServiceImpl extends AService implements SectorPerf
 
     @Override
     public List<Map<String, Object>> getLatest(String timeframe, String sectorCode) {
-        return runTask("getLatestSectorPerformance", () -> {
+        return runTask("getLatestSectorPerformance",
+                details(detail("timeframe", timeframe), detail("sectorCode", sectorCode)),
+                () -> {
             Timeframe tf = Timeframe.fromString(timeframe);
             if (tf == null) {
                 return List.of();

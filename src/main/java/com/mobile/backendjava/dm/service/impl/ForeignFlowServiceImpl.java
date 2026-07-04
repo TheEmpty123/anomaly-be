@@ -41,7 +41,15 @@ public class ForeignFlowServiceImpl extends AService implements ForeignFlowServi
     @Override
     public List<ForeignFlowChartDTO> getChart(String entityType, String entityCode, String timeframe,
                                               Integer fromDateSk, Integer toDateSk, Integer limit) {
-        return runTask("getForeignFlowChart", () -> {
+        return runTask("getForeignFlowChart",
+                details(
+                        detail("entityType", entityType),
+                        detail("entityCode", entityCode),
+                        detail("timeframe", timeframe),
+                        detail("fromDateSk", fromDateSk),
+                        detail("toDateSk", toDateSk),
+                        detail("limit", capLimit(limit, DEFAULT_CHART_LIMIT))),
+                () -> {
             String safeEntityType = requiredUpper(entityType, "entityType");
             String safeEntityCode = requiredUpper(entityCode, "entityCode");
             String safeTimeframe = requiredUpper(timeframe, "timeframe");
@@ -59,7 +67,13 @@ public class ForeignFlowServiceImpl extends AService implements ForeignFlowServi
 
     @Override
     public List<ForeignFlowHeatmapDTO> getHeatmap(Integer dateSk, String timeframe, Integer limit, String direction) {
-        return runTask("getForeignFlowHeatmap", () -> {
+        return runTask("getForeignFlowHeatmap",
+                details(
+                        detail("dateSk", dateSk),
+                        detail("timeframe", timeframe),
+                        detail("limit", capLimit(limit, DEFAULT_HEATMAP_LIMIT)),
+                        detail("direction", direction)),
+                () -> {
             if (dateSk == null) {
                 throw new IllegalArgumentException("dateSk is required");
             }

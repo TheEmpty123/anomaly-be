@@ -26,6 +26,10 @@ public abstract class AService {
     }
 
     protected <T> T runTask(String taskName, Supplier<T> task) {
+        return runTask(taskName, null, task);
+    }
+
+    protected <T> T runTask(String taskName, String taskDetails, Supplier<T> task) {
         String currentTaskId = TaskLogContext.getTaskId();
         String taskId = currentTaskId == null ? UUID.randomUUID().toString() : currentTaskId;
         boolean rootTask = currentTaskId == null;
@@ -33,13 +37,15 @@ public abstract class AService {
         if (rootTask) {
             TaskLogContext.setTaskId(taskId);
         }
-        log.info(taskName, "START");
+        log.info(taskName, "START" + detailSuffix(taskDetails));
         try {
             T result = task.get();
-            log.info(taskName, "SUCCESS durationMs=" + (System.currentTimeMillis() - startedAt));
+            log.info(taskName, "SUCCESS durationMs=" + (System.currentTimeMillis() - startedAt)
+                    + detailSuffix(taskDetails));
             return result;
         } catch (RuntimeException | Error ex) {
             log.error(taskName, "FAILED durationMs=" + (System.currentTimeMillis() - startedAt)
+                    + detailSuffix(taskDetails)
                     + " error=" + ex.getClass().getSimpleName()
                     + " message=" + ex.getMessage());
             throw ex;
@@ -55,5 +61,37 @@ public abstract class AService {
             task.run();
             return null;
         });
+    }
+
+    protected void runTask(String taskName, String taskDetails, Runnable task) {
+        runTask(taskName, taskDetails, () -> {
+            task.run();
+            return null;
+        });
+    }
+
+    protected void runSilentTask(Runnable task) {
+        try {
+            task.run();
+        } catch (RuntimeException | Error ex) {
+            log.error("silentTask", "FAILED error=" + ex.getClass().getSimpleName()
+                    + " message=" + ex.getMessage());
+            throw ex;
+        }
+    }
+
+    protected String detail(String key, Object value) {
+        return key + "=" + value;
+    }
+
+    protected String details(String... values) {
+        return String.join(" ", values);
+    }
+
+    private String detailSuffix(String taskDetails) {
+        if (taskDetails == null || taskDetails.isBlank()) {
+            return "";
+        }
+        return " detail=" + taskDetails;
     }
 }
