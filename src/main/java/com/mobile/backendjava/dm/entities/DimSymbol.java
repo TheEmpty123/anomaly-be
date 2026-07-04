@@ -9,6 +9,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
@@ -52,4 +53,10 @@ public class DimSymbol {
 
     @Column(name = "is_current")
     private Integer isCurrent;
+
+    @Column(name = "shares_outstanding")
+    private Long sharesOutstanding;
+
+    @Column(name = "freefloat")
+    private BigDecimal freefloat;
 }

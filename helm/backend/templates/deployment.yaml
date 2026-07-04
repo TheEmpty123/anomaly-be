@@ -33,13 +33,10 @@ spec:
 
             - name: SPRING_DATASOURCE_URL
               value: "{{ .Values.env.SPRING_DATASOURCE_URL }}"
-
             - name: REDIS_HOST
               value: "{{ .Values.env.REDIS_HOST }}"
-
             - name: REDIS_PORT
-              value: {{ .Values.env.REDIS_PORT | quote }}
-
+              value: "{{ .Values.env.REDIS_PORT | quote }}"
             - name: MARKET_PUBSUB_CHANNEL
               value: "{{ .Values.env.MARKET_PUBSUB_CHANNEL }}"
 
@@ -56,4 +53,4 @@ spec:
                   key: SPRING_DATASOURCE_PASSWORD
 
           resources:
-{{ toYaml .Values.resources | nindent 12 }}
+{{ toYaml .Values.resources | indent 12 }}

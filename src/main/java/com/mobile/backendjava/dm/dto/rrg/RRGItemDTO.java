@@ -29,4 +29,11 @@ public class RRGItemDTO {
     private String benchmark;
     private LocalDateTime ingestionTime;
     private String regime;
+    private Long totalVolume;
+    private Long totalValue;
+    private Long totalMarketCap;
+    private BigDecimal avgMarketCap;
+    private BigDecimal liquidityScore;
+    private BigDecimal totalFreefloatMarketCap;
+    private BigDecimal avgMarketWeight;
 }

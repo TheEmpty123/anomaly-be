@@ -57,6 +57,13 @@ public class StellarRRGController {
                     .benchmark((String) m.get("benchmark"))
                     .ingestionTime((LocalDateTime) m.get("ingestion_time"))
                     .regime((String) m.get("regime"))
+                    .totalVolume((Long) m.get("total_volume"))
+                    .totalValue((Long) m.get("total_value"))
+                    .totalMarketCap((Long) m.get("total_market_cap"))
+                    .avgMarketCap((BigDecimal) m.get("avg_market_cap"))
+                    .liquidityScore((BigDecimal) m.get("liquidity_score"))
+                    .totalFreefloatMarketCap((BigDecimal) m.get("total_freefloat_market_cap"))
+                    .avgMarketWeight((BigDecimal) m.get("avg_market_weight"))
                     .build();
             items.add(dto);
         }

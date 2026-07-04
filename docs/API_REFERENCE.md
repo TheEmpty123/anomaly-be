@@ -2,6 +2,331 @@
 
 ## Stellar API - `/stellar-api/v1`
 
+## Tổng hợp API hiện có
+- Foreign Flow
+  - GET /stellar-api/v1/foreign-flow/chart — Dữ liệu chuỗi thời gian theo mã cổ phiếu/ngành/thị trường
+  - GET /stellar-api/v1/foreign-flow/heatmap — Dữ liệu heatmap theo ngày và timeframe
+- Heatmap (Realtime qua SSE)
+  - GET /stellar-api/v1/heatmap/snapshot — Ảnh chụp heatmap hiện tại (từ Redis)
+  - GET /stellar-api/v1/heatmap/stream — Luồng sự kiện Server-Sent Events (SSE) cập nhật realtime
+- OHLCV
+  - GET /stellar-api/v1/ohlcv/{symbol} — Lịch sử OHLCV theo mã
+  - GET /stellar-api/v1/ohlcv — OHLCV cho tất cả mã trong một ngày
+  - GET /stellar-api/v1/ohlcv/latest — OHLCV mới nhất cho tất cả mã
+- Symbols
+  - GET /stellar-api/v1/symbols — Danh sách metadata cơ bản của mã
+- Market Structure
+  - GET /stellar-api/v1/market-structure — Ảnh chụp cấu trúc thị trường mới nhất
+- RRG
+  - GET /stellar-api/v1/rrg — Danh sách RRG ngành theo regime
+- Sector Performance
+  - GET /stellar-api/v1/sector-performance — Hiệu suất ngành theo timeframe
+
+## Foreign Flow APIs
+
+### GET /stellar-api/v1/foreign-flow/chart
+Returns foreign flow time-series data by symbol, sector, or market. This supports line charts, cumulative foreign flow charts, and comparison between `priceIndex100` and `benchmarkIndex100`.
+
+**Parameters:**
+- `entityType` *(required)*: examples `SYMBOL`, `SECTOR`, `MARKET`
+- `entityCode` *(required)*: examples `FPT`, `BANK`, `VNINDEX`
+- `timeframe` *(required)*: examples `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`
+- `fromDateSk` *(optional)*: inclusive start date in `YYYYMMDD`
+- `toDateSk` *(optional)*: inclusive end date in `YYYYMMDD`
+- `limit` *(optional)*: defaults to `500`, max `1000`
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/foreign-flow/chart?entityType=SYMBOL&entityCode=FPT&timeframe=1D&limit=200"
+```
+
+**Response (200):**
+```json
+[
+  {
+    "entityType": "SYMBOL",
+    "entityCode": "FPT",
+    "dateSk": 20260704,
+    "timeframe": "1D",
+    "buyVal": 12000000000,
+    "sellVal": 9000000000,
+    "netVal": 3000000000,
+    "cumulativeNetVal": 15000000000,
+    "buyVol": 100000,
+    "sellVol": 80000,
+    "netVol": 20000,
+    "cumulativeNetVol": 120000,
+    "close": 123400,
+    "priceIndex100": 108.5,
+    "benchmarkCode": "VNINDEX",
+    "benchmarkClose": 1280.5,
+    "benchmarkIndex100": 103.2,
+    "ingestionTime": "2026-07-04T17:30:00"
+  }
+]
+```
+
+**Status Codes:** `200 OK` | `400 Bad Request`
+
+---
+
+### GET /stellar-api/v1/foreign-flow/heatmap
+Returns foreign flow heatmap data by date and timeframe. This supports foreign flow heatmaps and optional filtering by net buy/sell direction.
+
+**Parameters:**
+- `dateSk` *(required)*: date in `YYYYMMDD`
+- `timeframe` *(required)*: examples `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`
+- `direction` *(optional)*: `BUY`, `SELL`, `NEUTRAL`
+- `limit` *(optional)*: defaults to `199`, max `1000`
+
+**Examples:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/foreign-flow/heatmap?dateSk=20260704&timeframe=1D&limit=199"
+curl "http://localhost:8080/stellar-api/v1/foreign-flow/heatmap?dateSk=20260704&timeframe=1D&direction=BUY&limit=50"
+```
+
+**Response (200):**
+```json
+[
+  {
+    "dateSk": 20260704,
+    "timeframe": "1D",
+    "symbol": "FPT",
+    "symbolSk": 123,
+    "netVal": 3000000000,
+    "cumulativeNetVal": 15000000000,
+    "netVol": 20000,
+    "cumulativeNetVol": 120000,
+    "close": 123400,
+    "pctChange": 1.25,
+    "volume": 1000000,
+    "value": 123400000000,
+    "marketCap": 150000000000000,
+    "marketWeight": 0.025,
+    "rankNetBuy": 1,
+    "rankNetSell": null,
+    "intensity": 0.85,
+    "direction": "BUY",
+    "ingestionTime": "2026-07-04T17:30:00"
+  }
+]
+```
+
+**Status Codes:** `200 OK` | `400 Bad Request`
+
+---
+
+## Heatmap (Realtime SSE) APIs
+
+### GET /stellar-api/v1/heatmap/snapshot
+Trả về ảnh chụp dữ liệu Heatmap hiện tại được lưu trong Redis. Phù hợp để khởi tạo màn hình trước khi mở luồng realtime.
+
+- Response: Array các đối tượng HeatmapQuoteDTO
+- Status Codes: `200 OK`
+
+Ví dụ gọi:
+```bash
+curl "http://localhost:8080/stellar-api/v1/heatmap/snapshot"
+```
+
+Ví dụ phản hồi (200):
+```json
+[
+  {
+    "symbol": "FPT",
+    "price": 123400,
+    "refPrice": 122000,
+    "pctChange": 1.15,
+    "volume": 1000000,
+    "txnValue": 123400000000,
+    "marketCap": 150000000000000,
+    "status": "TRADING",
+    "sector": "TECHNOLOGY",
+    "industry": "Software",
+    "exchange": "HOSE",
+    "lastUpdated": "2026-07-04T18:59:30Z"
+  }
+]
+```
+
+Fields (tham khảo):
+- symbol: mã cổ phiếu
+- price: giá khớp hiện tại
+- refPrice: giá tham chiếu
+- pctChange: % thay đổi so với tham chiếu
+- volume: khối lượng
+- txnValue: giá trị giao dịch
+- marketCap: vốn hóa
+- status: trạng thái (TRADING, HALTED, ...)
+- sector, industry, exchange: phân loại
+- lastUpdated: thời điểm cập nhật ISO-8601
+
+---
+
+### GET /stellar-api/v1/heatmap/stream
+Luồng Server-Sent Events (SSE) cung cấp cập nhật realtime cho Heatmap.
+
+- Produces: `text/event-stream`
+- Sự kiện gửi ra:
+  - `ping`: heartbeat định kỳ để giữ kết nối (mỗi ~20s)
+  - `quote`: bản tin giá/heatmap dạng JSON (string JSON hoặc object JSON)
+- Timeout kết nối mặc định: ~30 phút (server sẽ đóng nếu không hoạt động). Client nên tự động reconnect.
+
+Ví dụ JavaScript (trình duyệt):
+```js
+const es = new EventSource("/stellar-api/v1/heatmap/stream");
+
+es.addEventListener("ping", (e) => {
+  // e.data có thể là một JSON: { ts: "2026-07-04T19:00:00Z" }
+  // dùng để cập nhật trạng thái kết nối
+});
+
+es.addEventListener("quote", (e) => {
+  // quote có thể là chuỗi JSON hoặc object JSON
+  try {
+    const payload = JSON.parse(e.data); // { symbol, price, pctChange, ... }
+    // TODO: cập nhật UI heatmap từ payload
+  } catch {
+    // nếu server gửi string JSON thô
+    // hãy parse như trên; nếu là object đã serialize sẵn thì dùng trực tiếp
+  }
+});
+
+es.onerror = () => {
+  // Trình duyệt sẽ tự reconnect theo EventSource
+};
+```
+
+Ví dụ theo dõi bằng curl:
+```bash
+curl -N "http://localhost:8080/stellar-api/v1/heatmap/stream"
+```
+
+Mẫu bản tin:
+- ping
+```
+event: ping
+data: {"ts":"2026-07-04T19:00:00Z"}
+```
+
+- quote (ví dụ)
+```
+event: quote
+data: {"symbol":"FPT","price":123400,"pctChange":1.15,"volume":1000000}
+```
+
+Ghi chú:
+- Khi mất mạng/kết nối, server có thể loại bỏ emitter và client sẽ tự reconnect.
+- Hãy hiển thị dữ liệu từ snapshot trước, sau đó hợp nhất các bản tin quote để cập nhật theo thời gian thực.
+- Backend sử dụng Redis làm nguồn dữ liệu và gửi heartbeat mỗi ~20 giây để giữ kết nối hoạt động.
+
+---
+
+## OHLCV APIs
+
+### GET /stellar-api/v1/ohlcv/{symbol}
+Returns historical OHLCV rows for one symbol. This endpoint is intended for candlestick charts, volume charts, and daily price charts. Current data is EOD/daily with `timeframe=1D`, while the `timeframe` parameter is kept for future expansion.
+
+**Parameters:**
+- `timeframe` *(optional)*: defaults to `1D`
+- `fromDateSk` *(optional)*: inclusive start date in `YYYYMMDD`
+- `toDateSk` *(optional)*: inclusive end date in `YYYYMMDD`
+- `limit` *(optional)*: defaults to `500`, max `5000`
+- `order` *(optional)*: defaults to `asc`; accepted values: `asc`, `desc`
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/ohlcv/FPT?timeframe=1D&limit=500"
+```
+
+**Response (200):**
+```json
+[
+  {
+    "symbol": "FPT",
+    "symbolSk": 123,
+    "dateSk": 20260704,
+    "fullDate": "2026-07-04",
+    "timeframe": "1D",
+    "timeSk": 0,
+    "open": 121000,
+    "high": 124000,
+    "low": 120500,
+    "close": 123400,
+    "volume": 1000000,
+    "value": 123400000000,
+    "marketCap": 150000000000000,
+    "marketWeight": 0.025
+  }
+]
+```
+
+**Status Codes:** `200 OK` | `400 Bad Request`
+
+---
+
+### GET /stellar-api/v1/ohlcv
+Returns OHLCV rows for all symbols on one date. This endpoint supports market overview, heatmap fallback from database, and EOD price tables.
+
+**Parameters:**
+- `dateSk` *(required)*: date in `YYYYMMDD`
+- `timeframe` *(optional)*: defaults to `1D`
+- `limit` *(optional)*: defaults to `199`, max `1000`
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/ohlcv?dateSk=20260704&timeframe=1D&limit=199"
+```
+
+**Status Codes:** `200 OK` | `400 Bad Request`
+
+---
+
+### GET /stellar-api/v1/ohlcv/latest
+Returns OHLCV rows for all symbols on the latest available `date_sk` for the requested timeframe. The frontend does not need to know the latest trading date.
+
+**Parameters:**
+- `timeframe` *(optional)*: defaults to `1D`
+- `limit` *(optional)*: defaults to `199`, max `1000`
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/ohlcv/latest?timeframe=1D&limit=199"
+```
+
+**Status Codes:** `200 OK`
+
+---
+
+### GET /stellar-api/v1/symbols
+Returns minimal symbol metadata for frontend symbol selectors. This API only uses `symbol_id`, `symbol`, `is_active`, `is_current`, `shares_outstanding`, and `freefloat` from `stellar_dm.dim_symbol`.
+
+**Parameters:**
+- `activeOnly` *(optional)*: defaults to `true`
+- `limit` *(optional)*: defaults to `500`, max `2000`
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/symbols?activeOnly=true&limit=500"
+```
+
+**Response (200):**
+```json
+[
+  {
+    "symbolSk": 123,
+    "symbol": "FPT",
+    "isActive": true,
+    "sharesOutstanding": 1500000000,
+    "freefloat": 0.85
+  }
+]
+```
+
+**Status Codes:** `200 OK`
+
+---
+
 ### GET /stellar-api/v1/market-structure
 Latest market structure snapshot by timeframe.
 
@@ -179,7 +504,14 @@ Sector RRG items by regime.
       },
       "benchmark": "VNINDEX",
       "ingestionTime": "2026-04-23T11:00:07.434856",
-      "regime": "FLEXIBLE"
+      "regime": "FLEXIBLE",
+      "totalVolume": 123456789,
+      "totalValue": 987654321000,
+      "totalMarketCap": 150000000000000,
+      "avgMarketCap": 1200000000000,
+      "liquidityScore": 0.82,
+      "totalFreefloatMarketCap": 90000000000000,
+      "avgMarketWeight": 0.035
     }
   ]
 }
@@ -211,6 +543,15 @@ Sector RRG items by regime.
 | `benchmark` | string | Chỉ số chuẩn được sử dụng |
 | `regime` | string | Chế độ thị trường: `VENTURE`, `FLEXIBLE`, `ENDURING` |
 | `ingestionTime` | string | Dấu thời gian ISO 8601 khi dữ liệu được nhập |
+| `totalVolume` | number | Tổng khối lượng giao dịch của sector; có thể dùng để filter/sort theo thanh khoản |
+| `totalValue` | number | Tổng giá trị giao dịch của sector; có thể dùng để filter/sort sector |
+| `totalMarketCap` | number | Tổng vốn hóa sector; có thể dùng để scale bubble size |
+| `avgMarketCap` | number | Vốn hóa trung bình trong sector; có thể dùng để filter nhóm sector theo quy mô |
+| `liquidityScore` | number | Điểm thanh khoản; có thể dùng để filter/sort sector |
+| `totalFreefloatMarketCap` | number | Tổng freefloat market cap; có thể dùng thay `totalMarketCap` khi muốn scale theo freefloat |
+| `avgMarketWeight` | number | Trọng số thị trường trung bình của sector |
+
+**Ghi chú field mới:** `totalMarketCap` có thể dùng để scale bubble size. `liquidityScore`, `totalValue`, `totalVolume` có thể dùng để frontend filter hoặc sort sector. `totalFreefloatMarketCap` có thể dùng thay `totalMarketCap` khi muốn scale theo freefloat. Các field mới có thể `null` nếu cache chưa backfill đầy đủ.
 
 **Giải thích Pha RRG:**
 - 🚀 **LEADING**: Hiệu suất mạnh mẽ, giai đoạn tăng trưởng
@@ -302,3 +643,93 @@ Latest sector performance by timeframe.
 | `timeframe` | Khoảng thời gian | Hiển thị "1 Tháng", "3 Tháng", v.v. |
 
 ---
+## Lưu ý cho Frontend khi sử dụng Heatmap Realtime SSE
+
+### 1. Frontend phải gọi snapshot trước, mở SSE sau
+
+Luồng xử lý đúng:
+
+```text
+GET /stellar-api/v1/heatmap/snapshot
+→ vẽ heatmap ban đầu
+→ mở EventSource /stellar-api/v1/heatmap/stream
+→ nhận event quote để cập nhật từng mã
+```
+
+Không nên chờ SSE để dựng heatmap ban đầu.
+
+### 2. Snapshot là nguồn dữ liệu đồng bộ, SSE là cập nhật realtime
+
+- Snapshot trả trạng thái đầy đủ hiện tại.
+- SSE chỉ đẩy cập nhật mới sau thời điểm client kết nối.
+- SSE không đảm bảo phát lại các event đã bị bỏ lỡ nếu client mất kết nối.
+- Redis Pub/Sub/SSE chỉ dùng để đẩy cập nhật thay đổi, không phải nguồn dữ liệu đầy đủ.
+
+### 3. Khi reconnect hoặc lỗi SSE, frontend nên đồng bộ lại snapshot
+
+- Trình duyệt `EventSource` có cơ chế tự reconnect.
+- Tuy nhiên nếu mất kết nối lâu, frontend nên gọi lại:
+  `GET /stellar-api/v1/heatmap/snapshot`
+- Sau đó tiếp tục nhận cập nhật qua SSE.
+
+### 4. Định dạng sự kiện
+
+Luồng SSE:
+
+```js
+const eventSource = new EventSource("/stellar-api/v1/heatmap/stream");
+
+eventSource.addEventListener("quote", (event) => {
+  const quote = JSON.parse(event.data);
+
+  // Cập nhật theo symbol, không thay toàn bộ heatmap nếu không cần thiết
+  quotesBySymbol[quote.symbol] = {
+    ...quotesBySymbol[quote.symbol],
+    ...quote,
+  };
+
+  renderHeatmap();
+});
+
+eventSource.addEventListener("ping", () => {
+  // Event heartbeat. Không cần cập nhật UI.
+});
+
+eventSource.onerror = () => {
+  // Trình duyệt sẽ tự thử kết nối lại.
+  // Nếu mất kết nối lâu, tải lại snapshot để tránh hiển thị dữ liệu cũ.
+};
+```
+
+Tên event:
+
+- `quote`: cập nhật realtime cho từng quote.
+- `ping`: event heartbeat, dùng để giữ kết nối và kiểm tra trạng thái kết nối.
+
+### 5. Cập nhật theo symbol, không thay thế toàn bộ danh sách
+
+- Nên giữ state dạng map/object theo symbol.
+- Ví dụ: `quotesBySymbol["FPT"] = quote`
+- Khi nhận event mới, chỉ cập nhật mã tương ứng.
+- Không nên dựng lại toàn bộ heatmap nếu không cần thiết.
+
+### 6. Dữ liệu cần dùng cho heatmap
+
+Frontend nên dùng:
+
+- `symbol`: định danh ô
+- `pctChange`: màu ô
+- `marketCap`: kích thước ô
+- `price`, `volume`, `txnValue`: tooltip
+- `status`: trạng thái tăng/giảm/tham chiếu
+- `timestamp` hoặc `lastUpdated`: thời điểm cập nhật
+
+### 7. Lưu ý về reconnect
+
+- Khi trang vừa mở: luôn gọi snapshot.
+- Khi SSE reconnect sau lỗi: nên chống gọi lặp việc tải lại snapshot.
+- Ví dụ chỉ tải lại snapshot nếu mất kết nối trên 5-10 giây.
+- Không mở nhiều `EventSource` trùng nhau cho cùng một màn hình.
+- Khi component bị gỡ khỏi màn hình hoặc người dùng rời trang, phải gọi:
+  `eventSource.close()`
+
