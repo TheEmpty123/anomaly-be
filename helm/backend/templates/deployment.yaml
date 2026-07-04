@@ -39,6 +39,12 @@ spec:
               value: {{ .Values.env.REDIS_PORT | quote }}
             - name: MARKET_PUBSUB_CHANNEL
               value: "{{ .Values.env.MARKET_PUBSUB_CHANNEL }}"
+            - name: STELLAR_JWT_ENABLED
+              value: "{{ .Values.env.STELLAR_JWT_ENABLED }}"
+            - name: STELLAR_JWT_ISSUER
+              value: "{{ .Values.env.STELLAR_JWT_ISSUER }}"
+            - name: STELLAR_JWT_AUDIENCE
+              value: "{{ .Values.env.STELLAR_JWT_AUDIENCE }}"
 
             - name: SPRING_DATASOURCE_USERNAME
               valueFrom:
@@ -51,6 +57,11 @@ spec:
                 secretKeyRef:
                   name: {{ .Values.secret.name }}
                   key: SPRING_DATASOURCE_PASSWORD
+            - name: STELLAR_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key: STELLAR_JWT_SECRET
 
           resources:
 {{ toYaml .Values.resources | indent 12 }}
