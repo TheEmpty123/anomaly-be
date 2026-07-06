@@ -26,4 +26,9 @@ public class StellarSymbolController {
             @RequestParam(required = false) Integer limit) {
         return ResponseEntity.ok(symbolService.getSymbols(activeOnly, limit));
     }
+
+    @GetMapping("/available")
+    public ResponseEntity<List<String>> getAvailableSymbols() {
+        return ResponseEntity.ok(symbolService.getAvailableSymbols());
+    }
 }

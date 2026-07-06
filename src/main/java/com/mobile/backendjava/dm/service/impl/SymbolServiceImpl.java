@@ -3,6 +3,7 @@ package com.mobile.backendjava.dm.service.impl;
 import com.mobile.backendjava.dm.dto.market.SymbolDTO;
 import com.mobile.backendjava.dm.entities.DimSymbol;
 import com.mobile.backendjava.dm.repository.DimSymbolRepository;
+import com.mobile.backendjava.dm.repository.StockOhlcvRepository;
 import com.mobile.backendjava.dm.service.SymbolService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -17,9 +18,11 @@ public class SymbolServiceImpl extends AService implements SymbolService {
     private static final int MAX_LIMIT = 2000;
 
     private final DimSymbolRepository dimSymbolRepository;
+    private final StockOhlcvRepository stockOhlcvRepository;
 
-    public SymbolServiceImpl(DimSymbolRepository dimSymbolRepository) {
+    public SymbolServiceImpl(DimSymbolRepository dimSymbolRepository, StockOhlcvRepository stockOhlcvRepository) {
         this.dimSymbolRepository = dimSymbolRepository;
+        this.stockOhlcvRepository = stockOhlcvRepository;
         initLogger();
     }
 
@@ -42,6 +45,13 @@ public class SymbolServiceImpl extends AService implements SymbolService {
                     .map(this::toDto)
                     .toList();
         });
+    }
+
+    @Override
+    public List<String> getAvailableSymbols() {
+        return runTask("getAvailableSymbols",
+                details(),
+                stockOhlcvRepository::findAvailableSymbols);
     }
 
     private int capLimit(Integer limit) {
