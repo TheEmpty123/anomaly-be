@@ -73,7 +73,7 @@ Returns foreign flow time-series data by symbol, sector, or market. This support
 
 **Example:**
 ```bash
-curl "http://localhost:8080/stellar-api/v1/foreign-flow/chart?entityType=SYMBOL&entityCode=FPT&timeframe=1D&limit=200"
+curl "http://localhost:8080/stellar-api/v1/foreign-flow/chart?entityType=STOCK&entityCode=FPT&timeframe=1D&limit=200"
 ```
 
 **Response (200):**

@@ -8,4 +8,6 @@ import java.util.List;
 @Service
 public interface SymbolService extends IInitializerData {
     List<SymbolDTO> getSymbols(Boolean activeOnly, Integer limit);
+
+    List<String> getAvailableSymbols();
 }
