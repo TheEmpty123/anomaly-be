@@ -13,6 +13,14 @@ import java.util.List;
 @Repository
 public interface StockOhlcvRepository extends JpaRepository<StockOhlcv, StockOhlcvId> {
 
+    @Query(value = """
+            select distinct s.symbol
+            from stellar_dm.stock_ohlcv as o
+            join stellar_dm.dim_symbol as s on s.symbol_id = o.symbol_sk
+            order by s.symbol
+            """, nativeQuery = true)
+    List<String> findAvailableSymbols();
+
     @Query("""
             select o
             from StockOhlcv o
