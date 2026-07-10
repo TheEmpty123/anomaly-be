@@ -321,6 +321,8 @@ Returns market breadth history for a date.
 
 | Field | Meaning | Chart usage |
 |-------|---------|-------------|
+| `streamId` | Redis Stream entry id, only present for history stream rows. | Stable point id / ordering fallback. |
+| `timestamp` | Sample timestamp from upstream stream row. | **Required** for history X-axis when present. |
 | `advance` / `advances` | Number of advancing stocks. | **Required** for breadth stacked bar/donut. |
 | `decline` / `declines` | Number of declining stocks. | **Required** for breadth stacked bar/donut. |
 | `unchanged` / `noChange` / `no_change` | Number of unchanged stocks. | **Required** for neutral segment. |
