@@ -36,7 +36,7 @@ public class HeatmapSseService extends AService {
             emitter.onCompletion(() -> closeConnection(emitter, "completed", null));
             emitter.onTimeout(() -> closeConnection(emitter, "timeout", null));
             emitter.onError(error -> closeConnection(emitter, "error", error));
-            send(emitter, connection, "ping", Map.of("ts", Instant.now().toString()), connection.correlationId());
+            send(emitter, connection, "ping", Map.of("ts", Instant.now().toString()), connection.correlationId(), true);
             return emitter;
         });
     }
@@ -49,26 +49,37 @@ public class HeatmapSseService extends AService {
 
     @Scheduled(fixedRate = 20000)
     public void heartbeat() {
-        runSilentTask("broadcastHeatmapHeartbeat", detail("activeEmitters", emitters.size()),
-                () -> broadcast("ping", Map.of("ts", Instant.now().toString())));
+        // Keep the SSE connection alive, but temporarily suppress heartbeat lifecycle logs.
+        broadcast("ping", Map.of("ts", Instant.now().toString()), false);
     }
 
     private void broadcast(String eventName, Object data) {
-        String sourceCorrelationId = CorrelationIdContext.get();
-        log.info("event=sse.broadcast.start eventName={} connectionCount={} sourceCorrelationId={}",
-                eventName, emitters.size(), sourceCorrelationId);
-        for (Map.Entry<SseEmitter, SseConnection> entry : emitters.entrySet()) {
-            send(entry.getKey(), entry.getValue(), eventName, data, sourceCorrelationId);
-        }
-        log.info("event=sse.broadcast.finish eventName={} connectionCount={} sourceCorrelationId={}",
-                eventName, emitters.size(), sourceCorrelationId);
+        broadcast(eventName, data, true);
     }
 
-    private void send(SseEmitter emitter, SseConnection connection, String eventName, Object data, String sourceCorrelationId) {
+    private void broadcast(String eventName, Object data, boolean logLifecycle) {
+        String sourceCorrelationId = CorrelationIdContext.get();
+        if (logLifecycle) {
+            log.info("event=sse.broadcast.start eventName={} connectionCount={} sourceCorrelationId={}",
+                    eventName, emitters.size(), sourceCorrelationId);
+        }
+        for (Map.Entry<SseEmitter, SseConnection> entry : emitters.entrySet()) {
+            send(entry.getKey(), entry.getValue(), eventName, data, sourceCorrelationId, logLifecycle);
+        }
+        if (logLifecycle) {
+            log.info("event=sse.broadcast.finish eventName={} connectionCount={} sourceCorrelationId={}",
+                    eventName, emitters.size(), sourceCorrelationId);
+        }
+    }
+
+    private void send(SseEmitter emitter, SseConnection connection, String eventName, Object data,
+                      String sourceCorrelationId, boolean logLifecycle) {
         CorrelationIdContext.runWith(connection.correlationId(), () -> {
             try {
-                log.info("event=sse.event.send connectionId={} eventName={} payloadType={} sourceCorrelationId={}",
-                        connection.connectionId(), eventName, data == null ? "null" : data.getClass().getSimpleName(), sourceCorrelationId);
+                if (logLifecycle) {
+                    log.info("event=sse.event.send connectionId={} eventName={} payloadType={} sourceCorrelationId={}",
+                            connection.connectionId(), eventName, data == null ? "null" : data.getClass().getSimpleName(), sourceCorrelationId);
+                }
                 SseEmitter.SseEventBuilder event = SseEmitter.event().name(eventName);
                 if (data instanceof String) {
                     event.data(data);
@@ -76,8 +87,10 @@ public class HeatmapSseService extends AService {
                     event.data(data, MediaType.APPLICATION_JSON);
                 }
                 emitter.send(event);
-                log.info("event=sse.event.sent connectionId={} eventName={} sourceCorrelationId={}",
-                        connection.connectionId(), eventName, sourceCorrelationId);
+                if (logLifecycle) {
+                    log.info("event=sse.event.sent connectionId={} eventName={} sourceCorrelationId={}",
+                            connection.connectionId(), eventName, sourceCorrelationId);
+                }
             } catch (IOException | IllegalStateException ex) {
                 log.warn("event=sse.event.failed connectionId={} eventName={} sourceCorrelationId={} errorType={} errorMessage={}",
                         connection.connectionId(), eventName, sourceCorrelationId,
