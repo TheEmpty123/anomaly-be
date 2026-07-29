@@ -35,11 +35,11 @@ public class CorrelationIdFilter extends OncePerRequestFilter {
         CorrelationIdContext.set(correlationId);
 
         try {
-            log.info("event=request.start dispatchType={} method={} path={} query={} remoteAddress={}",
+            log.info("event=request.processing.start message=\"Starting request processing\" dispatchType={} method={} path={} query={} remoteAddress={}",
                     request.getDispatcherType(), request.getMethod(), request.getRequestURI(), safeQuery(request), request.getRemoteAddr());
             filterChain.doFilter(request, response);
         } finally {
-            log.info("event=request.finish dispatchType={} method={} path={} status={} durationMs={}",
+            log.info("event=request.processing.finish message=\"Finished request processing\" dispatchType={} method={} path={} status={} durationMs={}",
                     request.getDispatcherType(), request.getMethod(), request.getRequestURI(), response.getStatus(), System.currentTimeMillis() - startedAt);
             CorrelationIdContext.clear();
         }
