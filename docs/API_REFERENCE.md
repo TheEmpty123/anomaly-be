@@ -48,8 +48,10 @@ If the token is missing or invalid, the API returns:
   - GET /stellar-api/v1/index-ohlcv - Index OHLCV rows by date
   - GET /stellar-api/v1/index-ohlcv/latest - Latest index OHLCV rows
 - Anomalies
+  - GET /stellar-api/v1/stock-anomalies - Stock anomaly scores by prediction date
   - GET /stellar-api/v1/anomalies — Danh sách anomaly và kết quả AI analysis
 - Symbols
+  - GET /stellar-api/v1/symbols/available - Available symbols with OHLCV data
   - GET /stellar-api/v1/symbols — Danh sách metadata cơ bản của mã
 - Market Structure
   - GET /stellar-api/v1/market-structure — Ảnh chụp cấu trúc thị trường mới nhất
@@ -340,21 +342,38 @@ Important breadth fields: `advance`, `decline`, `unchanged`, `total`, `advancePc
 
 ## Anomaly APIs
 
-### GET /stellar-api/v1/anomalies
-Returns anomaly rows and AI analysis labels.
+### GET /stellar-api/v1/stock-anomalies
+Returns stock anomaly scores from `stellar_dm.stock_anomalies`. If `date` is omitted, the backend uses the latest `predictionDate`.
+
+**Parameters:**
+- `date` *(optional)*: prediction date in `YYYY-MM-DD`.
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/stock-anomalies?date=2026-07-10"
+```
 
 **Response (200):**
 ```json
 [
   {
-    "symbol": "FPT",
-    "date": "2026-07-04",
-    "ai_analysis": {
-      "anomaly_score": 0.92,
-      "is_anomaly": true,
-      "status_label": "HIGH_RISK"
-    },
-    "explanation": "Unusual price/volume movement detected."
+    "id": 1,
+    "symbol": "HPG",
+    "sectorGroup": "STEEL",
+    "groupName": "Steel",
+    "predictionDate": "2026-07-10",
+    "score": 0.91,
+    "p95": 0.72,
+    "p98": 0.84,
+    "scoreOverP95": 1.26,
+    "scoreOverP98": 1.08,
+    "baselineScore": 0.41,
+    "baselineWindows": 60,
+    "scoreRatioVsBaseline": 2.21,
+    "anomalyCode": 2,
+    "anomalyLevel": "HIGH",
+    "relativeLevel": "ABOVE_BASELINE",
+    "finalDecision": "ANOMALY"
   }
 ]
 ```
@@ -363,14 +382,25 @@ Returns anomaly rows and AI analysis labels.
 
 | Field | Meaning | UI/chart usage |
 |-------|---------|----------------|
-| `symbol` | Mã cổ phiếu. | **Required** for table row and drill-down. |
-| `date` | Ngày phát hiện anomaly. | **Required** for timeline/table sorting. |
-| `ai_analysis.anomaly_score` | Điểm bất thường, thường dùng thang 0-1. | **Required** for severity color/score chart. |
-| `ai_analysis.is_anomaly` | Cờ xác nhận có bất thường. | Filter/highlight rows. |
-| `ai_analysis.status_label` | Nhãn trạng thái từ model. | Badge/severity label. |
-| `explanation` | Giải thích ngắn về anomaly. | Tooltip/detail panel. |
+| `id` | Row id in anomaly table. | Stable row key. |
+| `symbol` | Stock symbol. | **Required** for table row and drill-down. |
+| `sectorGroup` | Sector/group code. | Filter/grouping. |
+| `groupName` | Human-readable group name. | Filter label/tooltip. |
+| `predictionDate` | Date the anomaly score applies to. | **Required** for timeline/table sorting. |
+| `score` | Current anomaly score. | **Required** for severity score chart. |
+| `p95` | 95th percentile threshold. | Threshold line/reference. |
+| `p98` | 98th percentile threshold. | High-severity threshold line/reference. |
+| `scoreOverP95` | Score divided by p95 threshold. | Relative severity tooltip/sort. |
+| `scoreOverP98` | Score divided by p98 threshold. | Extreme severity tooltip/sort. |
+| `baselineScore` | Historical baseline score. | Baseline comparison. |
+| `baselineWindows` | Number of windows used for baseline. | Data quality/context. |
+| `scoreRatioVsBaseline` | Score divided by baseline. | **Recommended** for relative anomaly ranking. |
+| `anomalyCode` | Numeric anomaly code. | Programmatic classification. |
+| `anomalyLevel` | Severity label. | Badge/color. |
+| `relativeLevel` | Level relative to baseline/threshold. | Badge/filter. |
+| `finalDecision` | Final anomaly decision. | **Required** for highlight/filter. |
 
-Important anomaly fields: `symbol`, `date`, `ai_analysis.anomaly_score`, `ai_analysis.is_anomaly`, `ai_analysis.status_label`.
+Important stock anomaly fields: `symbol`, `predictionDate`, `score`, `anomalyLevel`, `finalDecision`, `scoreRatioVsBaseline`.
 
 **Status Codes:** `200 OK`
 
@@ -379,10 +409,10 @@ Important anomaly fields: `symbol`, `date`, `ai_analysis.anomaly_score`, `ai_ana
 ## OHLCV APIs
 
 ### GET /stellar-api/v1/ohlcv/{symbol}
-Returns historical OHLCV rows for one symbol. This endpoint is intended for candlestick charts, volume charts, and daily price charts. Current data is EOD/daily with `timeframe=1D`, while the `timeframe` parameter is kept for future expansion.
+Returns historical OHLCV rows for one symbol. This endpoint is intended for candlestick charts, volume charts, and daily price charts. Current data is EOD/daily with `timeframe=1d`, while the `timeframe` parameter is kept for future expansion.
 
 **Parameters:**
-- `timeframe` *(optional)*: defaults to `1D`
+- `timeframe` *(optional)*: defaults to `1d`
 - `fromDateSk` *(optional)*: inclusive start date in `YYYYMMDD`
 - `toDateSk` *(optional)*: inclusive end date in `YYYYMMDD`
 - `limit` *(optional)*: defaults to `500`, max `5000`
@@ -390,7 +420,7 @@ Returns historical OHLCV rows for one symbol. This endpoint is intended for cand
 
 **Example:**
 ```bash
-curl "http://localhost:8080/stellar-api/v1/ohlcv/FPT?timeframe=1D&limit=500"
+curl "http://localhost:8080/stellar-api/v1/ohlcv/FPT?timeframe=1d&limit=500"
 ```
 
 **Response (200):**
@@ -445,12 +475,12 @@ Returns OHLCV rows for all symbols on one date. This endpoint supports market ov
 
 **Parameters:**
 - `dateSk` *(required)*: date in `YYYYMMDD`
-- `timeframe` *(optional)*: defaults to `1D`
+- `timeframe` *(optional)*: defaults to `1d`
 - `limit` *(optional)*: defaults to `199`, max `1000`
 
 **Example:**
 ```bash
-curl "http://localhost:8080/stellar-api/v1/ohlcv?dateSk=20260704&timeframe=1D&limit=199"
+curl "http://localhost:8080/stellar-api/v1/ohlcv?dateSk=20260704&timeframe=1d&limit=199"
 ```
 
 **Status Codes:** `200 OK` | `400 Bad Request`
@@ -463,12 +493,12 @@ Response schema is the same as `GET /stellar-api/v1/ohlcv/{symbol}`. For market 
 Returns OHLCV rows for all symbols on the latest available `date_sk` for the requested timeframe. The frontend does not need to know the latest trading date.
 
 **Parameters:**
-- `timeframe` *(optional)*: defaults to `1D`
+- `timeframe` *(optional)*: defaults to `1d`
 - `limit` *(optional)*: defaults to `199`, max `1000`
 
 **Example:**
 ```bash
-curl "http://localhost:8080/stellar-api/v1/ohlcv/latest?timeframe=1D&limit=199"
+curl "http://localhost:8080/stellar-api/v1/ohlcv/latest?timeframe=1d&limit=199"
 ```
 
 **Status Codes:** `200 OK`
@@ -610,6 +640,32 @@ curl "http://localhost:8080/stellar-api/v1/symbols?activeOnly=true&limit=500"
 | `freefloat` | Tỷ lệ free-float. | Liquidity/freefloat weighting if needed. |
 
 Important selector fields: `symbol`, `symbolSk`, `isActive`.
+
+**Status Codes:** `200 OK`
+
+---
+
+### GET /stellar-api/v1/symbols/available
+Returns stock symbols that have rows in `stellar_dm.stock_ohlcv`. This is the lightweight option for chart search/autocomplete when the frontend only needs tradable symbols with OHLCV data.
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/symbols/available"
+```
+
+**Response (200):**
+```json
+[
+  "FPT",
+  "HPG",
+  "VCB"
+]
+```
+
+**Response usage:**
+- Each item is a symbol string.
+- Use for chart symbol selector/autocomplete.
+- Use `/stellar-api/v1/symbols` instead when metadata such as `symbolSk`, `sharesOutstanding`, or `freefloat` is needed.
 
 **Status Codes:** `200 OK`
 
