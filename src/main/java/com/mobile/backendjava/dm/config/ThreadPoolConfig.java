@@ -10,9 +10,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.TaskScheduler;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.core.task.TaskDecorator;
 import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.slf4j.MDC;
 
+import java.util.Map;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
@@ -30,6 +33,7 @@ public class ThreadPoolConfig {
         executor.setQueueCapacity(QUEUE_CAPACITY);
         executor.setThreadNamePrefix("dm-task-");
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
+        executor.setTaskDecorator(mdcTaskDecorator());
         executor.initialize();
         return executor;
     }
@@ -45,11 +49,19 @@ public class ThreadPoolConfig {
     }
 
     @Bean
-    public WebMvcConfigurer webMvcConfigurer(ThreadPoolTaskExecutor applicationTaskExecutor) {
+    public WebMvcConfigurer webMvcConfigurer(
+            ThreadPoolTaskExecutor applicationTaskExecutor,
+            RequestTraceInterceptor requestTraceInterceptor
+    ) {
         return new WebMvcConfigurer() {
             @Override
             public void configureAsyncSupport(AsyncSupportConfigurer configurer) {
                 configurer.setTaskExecutor(applicationTaskExecutor);
+            }
+
+            @Override
+            public void addInterceptors(org.springframework.web.servlet.config.annotation.InterceptorRegistry registry) {
+                registry.addInterceptor(requestTraceInterceptor);
             }
         };
     }
@@ -65,5 +77,28 @@ public class ThreadPoolConfig {
                 }
             }
         });
+    }
+
+    private TaskDecorator mdcTaskDecorator() {
+        return task -> {
+            Map<String, String> submittingThreadContext = MDC.getCopyOfContextMap();
+            return () -> {
+                Map<String, String> workerThreadContext = MDC.getCopyOfContextMap();
+                try {
+                    if (submittingThreadContext == null) {
+                        MDC.clear();
+                    } else {
+                        MDC.setContextMap(submittingThreadContext);
+                    }
+                    task.run();
+                } finally {
+                    if (workerThreadContext == null) {
+                        MDC.clear();
+                    } else {
+                        MDC.setContextMap(workerThreadContext);
+                    }
+                }
+            };
+        };
     }
 }

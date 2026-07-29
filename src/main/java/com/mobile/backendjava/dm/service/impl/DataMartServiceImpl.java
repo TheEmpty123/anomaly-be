@@ -37,6 +37,7 @@ public class DataMartServiceImpl extends AService implements DataMartService {
             // Validate and normalize regime using enum; return empty if invalid
             com.mobile.backendjava.dm.model.Regime r = com.mobile.backendjava.dm.model.Regime.fromString(regime);
             if (r == null) {
+                log.info("event=service.decision service=DataMartServiceImpl action=getSectorRRG outcome=empty reason=invalid-regime regime={}", regime);
                 return List.of();
             }
             // Delegate to repository; when dateSk is null, repository returns the latest available date_sk

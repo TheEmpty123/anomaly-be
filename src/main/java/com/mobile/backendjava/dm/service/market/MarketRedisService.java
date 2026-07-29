@@ -143,6 +143,8 @@ public class MarketRedisService extends AService {
         try {
             return objectMapper.readValue(json, Object.class);
         } catch (Exception ex) {
+            log.warn("event=service.decision service=MarketRedisService action=parseJson outcome=ignored reason=invalid-json errorType={} errorMessage={}",
+                    ex.getClass().getSimpleName(), ex.getMessage());
             return null;
         }
     }

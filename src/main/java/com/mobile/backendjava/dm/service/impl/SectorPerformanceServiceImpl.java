@@ -34,12 +34,14 @@ public class SectorPerformanceServiceImpl extends AService implements SectorPerf
                 () -> {
             Timeframe tf = Timeframe.fromString(timeframe);
             if (tf == null) {
+                log.info("event=service.decision service=SectorPerformanceServiceImpl action=getLatest outcome=empty reason=invalid-timeframe timeframe={}", timeframe);
                 return List.of();
             }
             String tfCode = tf.getCode();
 
             LocalDateTime latestIngestion = sectorPerformanceRepository.findMaxIngestionTimeByTimeframe(tfCode);
             if (latestIngestion == null) {
+                log.info("event=service.decision service=SectorPerformanceServiceImpl action=getLatest outcome=empty reason=no-data timeframe={}", tfCode);
                 return List.of();
             }
 

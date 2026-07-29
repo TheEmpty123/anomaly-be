@@ -79,6 +79,7 @@ public class OhlcvServiceImpl extends AService implements OhlcvService {
             String tf = normalizeTimeframe(timeframe);
             Integer latestDateSk = stockOhlcvRepository.findMaxDateSkByTimeframe(tf);
             if (latestDateSk == null) {
+                log.info("event=service.decision service=OhlcvServiceImpl action=getLatest outcome=empty reason=no-data timeframe={}", tf);
                 return List.of();
             }
             return getMarketSnapshot(latestDateSk, tf, limit);

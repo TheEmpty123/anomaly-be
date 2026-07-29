@@ -34,6 +34,7 @@ public class RRGServiceImpl extends AService implements RRGService {
                 () -> {
             Regime r = Regime.fromString(regime);
             if (r == null) {
+                log.info("event=service.decision service=RRGServiceImpl action=getSectorRRG outcome=empty reason=invalid-regime regime={}", regime);
                 return List.of();
             }
             String safeBenchmark = (benchmark == null || benchmark.isBlank()) ? "VNINDEX" : benchmark.trim();
@@ -41,6 +42,8 @@ public class RRGServiceImpl extends AService implements RRGService {
             if (effectiveDate == null) {
                 effectiveDate = rrgRepository.findMaxDateSkByRegimeAndBenchmark(r.name(), safeBenchmark);
                 if (effectiveDate == null) {
+                    log.info("event=service.decision service=RRGServiceImpl action=getSectorRRG outcome=empty reason=no-data regime={} benchmark={}",
+                            r.name(), safeBenchmark);
                     return List.of();
                 }
             }
