@@ -13,12 +13,14 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
+import lombok.extern.slf4j.Slf4j;
 
 import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 @Component
+@Slf4j
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private static final String BEARER_PREFIX = "Bearer ";
@@ -60,12 +62,16 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         String token = resolveToken(request);
+        log.debug("event=auth.validation.start path={} tokenSource={}", request.getRequestURI(),
+                request.getHeader(HttpHeaders.AUTHORIZATION) == null ? "query-or-missing" : "authorization-header");
 
         if (token.isEmpty() || !isValidToken(token)) {
+            log.warn("event=auth.rejected path={} reason=missing-or-invalid-token", request.getRequestURI());
             writeUnauthorized(response);
             return;
         }
 
+        log.debug("event=auth.accepted path={}", request.getRequestURI());
         filterChain.doFilter(request, response);
     }
 

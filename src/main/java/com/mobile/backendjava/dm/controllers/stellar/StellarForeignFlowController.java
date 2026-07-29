@@ -3,6 +3,7 @@ package com.mobile.backendjava.dm.controllers.stellar;
 import com.mobile.backendjava.dm.dto.market.ForeignFlowChartDTO;
 import com.mobile.backendjava.dm.dto.market.ForeignFlowHeatmapDTO;
 import com.mobile.backendjava.dm.service.ForeignFlowService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -13,6 +14,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("${api.stellar.base-path}/foreign-flow")
+@Slf4j
 public class StellarForeignFlowController {
 
     private final ForeignFlowService foreignFlowService;
@@ -29,9 +31,14 @@ public class StellarForeignFlowController {
             @RequestParam(required = false) Integer fromDateSk,
             @RequestParam(required = false) Integer toDateSk,
             @RequestParam(required = false) Integer limit) {
+        log.info("event=controller.request action=foreign-flow.chart entityType={} entityCode={} timeframe={} fromDateSk={} toDateSk={} limit={}",
+                entityType, entityCode, timeframe, fromDateSk, toDateSk, limit);
         try {
-            return ResponseEntity.ok(foreignFlowService.getChart(entityType, entityCode, timeframe, fromDateSk, toDateSk, limit));
+            List<ForeignFlowChartDTO> result = foreignFlowService.getChart(entityType, entityCode, timeframe, fromDateSk, toDateSk, limit);
+            log.info("event=controller.response action=foreign-flow.chart status=200 resultCount={}", result.size());
+            return ResponseEntity.ok(result);
         } catch (IllegalArgumentException ex) {
+            log.warn("event=controller.response action=foreign-flow.chart status=400 errorMessage={}", ex.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }
@@ -42,9 +49,14 @@ public class StellarForeignFlowController {
             @RequestParam(required = false) String timeframe,
             @RequestParam(required = false) Integer limit,
             @RequestParam(required = false) String direction) {
+        log.info("event=controller.request action=foreign-flow.heatmap dateSk={} timeframe={} limit={} direction={}",
+                dateSk, timeframe, limit, direction);
         try {
-            return ResponseEntity.ok(foreignFlowService.getHeatmap(dateSk, timeframe, limit, direction));
+            List<ForeignFlowHeatmapDTO> result = foreignFlowService.getHeatmap(dateSk, timeframe, limit, direction);
+            log.info("event=controller.response action=foreign-flow.heatmap status=200 resultCount={}", result.size());
+            return ResponseEntity.ok(result);
         } catch (IllegalArgumentException ex) {
+            log.warn("event=controller.response action=foreign-flow.heatmap status=400 errorMessage={}", ex.getMessage());
             return ResponseEntity.badRequest().build();
         }
     }

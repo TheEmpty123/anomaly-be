@@ -76,10 +76,11 @@ public class IndexOhlcvServiceImpl extends AService implements IndexOhlcvService
                         detail("timeframe", normalizeTimeframe(timeframe)),
                         detail("limit", capLimit(limit, DEFAULT_MARKET_LIMIT, MAX_MARKET_LIMIT))),
                 () -> {
-                    String tf = normalizeTimeframe(timeframe);
-                    Integer latestDateSk = indexOhlcvRepository.findMaxDateSkByTimeframe(tf);
-                    if (latestDateSk == null) {
-                        return List.of();
+            String tf = normalizeTimeframe(timeframe);
+            Integer latestDateSk = indexOhlcvRepository.findMaxDateSkByTimeframe(tf);
+            if (latestDateSk == null) {
+                log.info("event=service.decision service=IndexOhlcvServiceImpl action=getLatest outcome=empty reason=no-data timeframe={}", tf);
+                return List.of();
                     }
                     return getMarketSnapshot(latestDateSk, tf, limit);
                 });

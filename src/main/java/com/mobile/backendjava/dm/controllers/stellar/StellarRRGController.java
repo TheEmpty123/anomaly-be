@@ -5,6 +5,7 @@ import com.mobile.backendjava.dm.dto.rrg.RRGRequestDTO;
 import com.mobile.backendjava.dm.dto.rrg.RRGResponseDTO;
 import com.mobile.backendjava.dm.model.Regime;
 import com.mobile.backendjava.dm.service.RRGService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
@@ -19,6 +20,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("${api.stellar.base-path}")
+@Slf4j
 public class StellarRRGController {
 
     private final RRGService rrgService;
@@ -29,11 +31,16 @@ public class StellarRRGController {
 
     @GetMapping("/rrg")
     public ResponseEntity<RRGResponseDTO> getRRG(@ModelAttribute RRGRequestDTO request) {
+        log.info("event=controller.request action=rrg.get regime={} benchmark={} dateSk={}",
+                request == null ? null : request.getRegime(), request == null ? null : request.getBenchmark(),
+                request == null ? null : request.getDateSk());
         if (request == null || request.getRegime() == null || request.getRegime().isBlank()) {
+            log.warn("event=controller.response action=rrg.get status=400 reason=missing-regime");
             return ResponseEntity.badRequest().build();
         }
         Regime regime = Regime.fromString(request.getRegime());
         if (regime == null) {
+            log.warn("event=controller.response action=rrg.get status=400 reason=invalid-regime regime={}", request.getRegime());
             return ResponseEntity.badRequest().build();
         }
         String benchmark = (request.getBenchmark() == null || request.getBenchmark().isBlank())
@@ -68,8 +75,11 @@ public class StellarRRGController {
             items.add(dto);
         }
         if (items.isEmpty()) {
+            log.info("event=controller.response action=rrg.get status=204 resultCount=0");
             return ResponseEntity.noContent().build();
         }
+        log.info("event=controller.response action=rrg.get status=200 resultCount={} regime={} benchmark={}",
+                items.size(), regime, benchmark);
         return ResponseEntity.ok(RRGResponseDTO.builder().items(items).build());
     }
 }

@@ -34,6 +34,7 @@ public class StockAnomalyServiceImpl extends AService implements StockAnomalySer
                         resolvedDate = stockAnomalyRepository.findLatestPredictionDate();
                     }
                     if (resolvedDate == null) {
+                        log.info("event=service.decision service=StockAnomalyServiceImpl action=getByPredictionDate outcome=empty reason=no-prediction-date");
                         return List.of();
                     }
                     return stockAnomalyRepository.findByPredictionDateOrderBySymbolAscIdAsc(resolvedDate)

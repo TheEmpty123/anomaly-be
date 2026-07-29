@@ -32,6 +32,7 @@ public class MarketStructureServiceImpl extends AService implements MarketStruct
                 () -> {
             Timeframe tf = Timeframe.fromString(timeframe);
             if (tf == null) {
+                log.info("event=service.decision service=MarketStructureServiceImpl action=getLatest outcome=empty reason=invalid-timeframe timeframe={}", timeframe);
                 return Map.of();
             }
             String tfCode = tf.getCode();
@@ -39,11 +40,14 @@ public class MarketStructureServiceImpl extends AService implements MarketStruct
 
             Integer maxDateSk = marketStructureRepository.findMaxDateSkByTimeframeAndBenchmark(tfCode, safeBenchmark);
             if (maxDateSk == null) {
+                log.info("event=service.decision service=MarketStructureServiceImpl action=getLatest outcome=empty reason=no-data timeframe={} benchmark={}", tfCode, safeBenchmark);
                 return Map.of();
             }
             Optional<MarketStructureCache> opt = marketStructureRepository
                     .findByIdDateSkAndIdTimeframeAndIdBenchmark(maxDateSk, tfCode, safeBenchmark);
             if (opt.isEmpty()) {
+                log.info("event=service.decision service=MarketStructureServiceImpl action=getLatest outcome=empty reason=missing-cache-row dateSk={} timeframe={} benchmark={}",
+                        maxDateSk, tfCode, safeBenchmark);
                 return Map.of();
             }
             MarketStructureCache e = opt.get();
