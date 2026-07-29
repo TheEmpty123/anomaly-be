@@ -1,6 +1,8 @@
 package com.mobile.backendjava.dm.service.market;
 
 import com.mobile.backendjava.dm.service.impl.AService;
+import com.mobile.backendjava.dm.utils.CorrelationIdContext;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -9,15 +11,16 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 
 @Service
+@Slf4j
 public class HeatmapSseService extends AService {
 
     private static final long SSE_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(30);
-    private final Set<SseEmitter> emitters = ConcurrentHashMap.newKeySet();
+    private final Map<SseEmitter, SseConnection> emitters = new ConcurrentHashMap<>();
 
     public HeatmapSseService() {
         initLogger();
@@ -26,11 +29,14 @@ public class HeatmapSseService extends AService {
     public SseEmitter connect() {
         return runTask("connectHeatmapSse", detail("activeEmittersBefore", emitters.size()), () -> {
             SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
-            emitters.add(emitter);
-            emitter.onCompletion(() -> emitters.remove(emitter));
-            emitter.onTimeout(() -> emitters.remove(emitter));
-            emitter.onError(error -> emitters.remove(emitter));
-            send(emitter, "ping", Map.of("ts", Instant.now().toString()));
+            SseConnection connection = new SseConnection(UUID.randomUUID().toString(), CorrelationIdContext.get());
+            emitters.put(emitter, connection);
+            log.info("event=sse.connection.opened connectionId={} activeConnections={} timeoutMs={}",
+                    connection.connectionId(), emitters.size(), SSE_TIMEOUT_MS);
+            emitter.onCompletion(() -> closeConnection(emitter, "completed", null));
+            emitter.onTimeout(() -> closeConnection(emitter, "timeout", null));
+            emitter.onError(error -> closeConnection(emitter, "error", error));
+            send(emitter, connection, "ping", Map.of("ts", Instant.now().toString()), connection.correlationId());
             return emitter;
         });
     }
@@ -43,26 +49,60 @@ public class HeatmapSseService extends AService {
 
     @Scheduled(fixedRate = 20000)
     public void heartbeat() {
-        runSilentTask(() -> broadcast("ping", Map.of("ts", Instant.now().toString())));
+        runSilentTask("broadcastHeatmapHeartbeat", detail("activeEmitters", emitters.size()),
+                () -> broadcast("ping", Map.of("ts", Instant.now().toString())));
     }
 
     private void broadcast(String eventName, Object data) {
-        for (SseEmitter emitter : emitters) {
-            send(emitter, eventName, data);
+        String sourceCorrelationId = CorrelationIdContext.get();
+        log.info("event=sse.broadcast.start eventName={} connectionCount={} sourceCorrelationId={}",
+                eventName, emitters.size(), sourceCorrelationId);
+        for (Map.Entry<SseEmitter, SseConnection> entry : emitters.entrySet()) {
+            send(entry.getKey(), entry.getValue(), eventName, data, sourceCorrelationId);
         }
+        log.info("event=sse.broadcast.finish eventName={} connectionCount={} sourceCorrelationId={}",
+                eventName, emitters.size(), sourceCorrelationId);
     }
 
-    private void send(SseEmitter emitter, String eventName, Object data) {
-        try {
-            SseEmitter.SseEventBuilder event = SseEmitter.event().name(eventName);
-            if (data instanceof String) {
-                event.data(data);
-            } else {
-                event.data(data, MediaType.APPLICATION_JSON);
+    private void send(SseEmitter emitter, SseConnection connection, String eventName, Object data, String sourceCorrelationId) {
+        CorrelationIdContext.runWith(connection.correlationId(), () -> {
+            try {
+                log.info("event=sse.event.send connectionId={} eventName={} payloadType={} sourceCorrelationId={}",
+                        connection.connectionId(), eventName, data == null ? "null" : data.getClass().getSimpleName(), sourceCorrelationId);
+                SseEmitter.SseEventBuilder event = SseEmitter.event().name(eventName);
+                if (data instanceof String) {
+                    event.data(data);
+                } else {
+                    event.data(data, MediaType.APPLICATION_JSON);
+                }
+                emitter.send(event);
+                log.info("event=sse.event.sent connectionId={} eventName={} sourceCorrelationId={}",
+                        connection.connectionId(), eventName, sourceCorrelationId);
+            } catch (IOException | IllegalStateException ex) {
+                log.warn("event=sse.event.failed connectionId={} eventName={} sourceCorrelationId={} errorType={} errorMessage={}",
+                        connection.connectionId(), eventName, sourceCorrelationId,
+                        ex.getClass().getSimpleName(), ex.getMessage());
+                closeConnection(emitter, "send-failed", ex);
             }
-            emitter.send(event);
-        } catch (IOException | IllegalStateException ex) {
-            emitters.remove(emitter);
+        });
+    }
+
+    private void closeConnection(SseEmitter emitter, String reason, Throwable error) {
+        SseConnection connection = emitters.remove(emitter);
+        if (connection == null) {
+            return;
         }
+        CorrelationIdContext.runWith(connection.correlationId(), () -> {
+            if (error == null) {
+                log.info("event=sse.connection.closed connectionId={} reason={} activeConnections={}",
+                        connection.connectionId(), reason, emitters.size());
+            } else {
+                log.warn("event=sse.connection.closed connectionId={} reason={} activeConnections={} errorType={} errorMessage={}",
+                        connection.connectionId(), reason, emitters.size(), error.getClass().getSimpleName(), error.getMessage());
+            }
+        });
+    }
+
+    private record SseConnection(String connectionId, String correlationId) {
     }
 }

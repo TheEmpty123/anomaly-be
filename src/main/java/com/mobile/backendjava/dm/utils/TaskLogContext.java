@@ -1,8 +1,11 @@
 package com.mobile.backendjava.dm.utils;
 
+import org.slf4j.MDC;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class TaskLogContext {
+    public static final String MDC_KEY = "taskId";
     private static final ThreadLocal<String> CURRENT_TASK_ID = new ThreadLocal<>();
     private static final AtomicLong TASK_ID_SEQUENCE = new AtomicLong(0);
 
@@ -11,6 +14,7 @@ public final class TaskLogContext {
 
     public static void setTaskId(String taskId) {
         CURRENT_TASK_ID.set(taskId);
+        MDC.put(MDC_KEY, taskId);
     }
 
     public static String nextTaskId() {
@@ -23,5 +27,6 @@ public final class TaskLogContext {
 
     public static void clear() {
         CURRENT_TASK_ID.remove();
+        MDC.remove(MDC_KEY);
     }
 }

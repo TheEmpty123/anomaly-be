@@ -4,6 +4,7 @@ import com.mobile.backendjava.dm.dto.marketstructure.MarketStructureDTO;
 import com.mobile.backendjava.dm.dto.marketstructure.MarketStructureRequestDTO;
 import com.mobile.backendjava.dm.model.Timeframe;
 import com.mobile.backendjava.dm.service.MarketStructureService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +17,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("${api.stellar.base-path}")
+@Slf4j
 public class StellarMarketStructureController {
 
     private final MarketStructureService marketStructureService;
@@ -26,17 +28,22 @@ public class StellarMarketStructureController {
 
     @GetMapping("/market-structure")
     public ResponseEntity<MarketStructureDTO> getMarketStructure(@ModelAttribute MarketStructureRequestDTO request) {
+        log.info("event=controller.request action=market-structure.get timeframe={} benchmark={}",
+                request == null ? null : request.getTimeframe(), request == null ? null : request.getBenchmark());
         if (request == null || request.getTimeframe() == null || request.getTimeframe().isBlank()) {
+            log.warn("event=controller.response action=market-structure.get status=400 reason=missing-timeframe");
             return ResponseEntity.badRequest().build();
         }
         Timeframe tf = Timeframe.fromString(request.getTimeframe());
         if (tf == null) {
+            log.warn("event=controller.response action=market-structure.get status=400 reason=invalid-timeframe timeframe={}", request.getTimeframe());
             return ResponseEntity.badRequest().build();
         }
         String benchmark = (request.getBenchmark() == null || request.getBenchmark().isBlank())
                 ? "VNINDEX" : request.getBenchmark().trim();
         Map<String, Object> m = marketStructureService.getLatest(tf.getCode(), benchmark);
         if (m == null || m.isEmpty()) {
+            log.info("event=controller.response action=market-structure.get status=204 result=empty");
             return ResponseEntity.noContent().build();
         }
         MarketStructureDTO dto = MarketStructureDTO.builder()
@@ -53,6 +60,8 @@ public class StellarMarketStructureController {
                 .ecosystemRankings((String) m.get("ecosystem_rankings"))
                 .ingestionTime((LocalDateTime) m.get("ingestion_time"))
                 .build();
+        log.info("event=controller.response action=market-structure.get status=200 dateSk={} timeframe={} benchmark={}",
+                dto.getDateSk(), dto.getTimeframe(), dto.getBenchmark());
         return ResponseEntity.ok(dto);
     }
 }

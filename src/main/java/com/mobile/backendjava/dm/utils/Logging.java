@@ -1,46 +1,45 @@
 package com.mobile.backendjava.dm.utils;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 public class Logging {
     public static boolean shouldLog = true;
 
     public static void log(Object msg) {
         if (shouldLog) {
-            System.out.println(msg);
+            log.info("{}", msg);
         }
     }
 
-    public static void log(Object log, Object context) {
+    public static void log(Object message, Object context) {
         if (shouldLog) {
-            System.out.print(log + " ");
-            System.out.println(context);
+            log.info("{} {}", message, context);
         }
     }
 
     public static void warn(Object msg) {
         if (shouldLog) {
-            System.err.println(msg);
+            log.warn("{}", msg);
         }
     }
 
-    public static void warn(Object log, Object context) {
+    public static void warn(Object message, Object context) {
         if (shouldLog) {
-            System.err.print(log + " ");
-            System.out.println(context);
+            log.warn("{} {}", message, context);
         }
     }
 
     public static void error(Object msg) {
         if (shouldLog) {
-            System.err.println(msg);
+            log.error("{}", msg);
         }
     }
 
-    public static void error(Object log, Object context) {
+    public static void error(Object message, Object context) {
         if (shouldLog) {
-            System.err.print(log + " ");
-            System.out.println(context);
+            log.error("{} {}", message, context);
         }
     }
 }
