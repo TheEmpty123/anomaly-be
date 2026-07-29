@@ -3,7 +3,10 @@ package com.mobile.backendjava.dm.service.market;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mobile.backendjava.dm.dto.market.HeatmapQuoteDTO;
 import com.mobile.backendjava.dm.service.impl.AService;
+import org.springframework.data.domain.Range;
+import org.springframework.data.redis.connection.Limit;
 import org.springframework.data.redis.connection.DataType;
+import org.springframework.data.redis.connection.stream.MapRecord;
 import org.springframework.data.redis.core.Cursor;
 import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -23,6 +26,7 @@ public class MarketRedisService extends AService {
 
     private static final ZoneId MARKET_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter DATE_KEY_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
+    private static final int MAX_BREADTH_HISTORY_POINTS = 1000;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -71,11 +75,15 @@ public class MarketRedisService extends AService {
         String dateKey = normalizeDate(date);
         String key = history ? "market:breadth:history:" + dateKey : "market:breadth:" + dateKey;
         Object value = readAny(key);
-        if (history && value instanceof Map<?, ?> map) {
-            Map<String, Object> enriched = new LinkedHashMap<>();
-            map.forEach((k, v) -> enriched.put(String.valueOf(k), v));
-            addBreadthPercentages(enriched);
-            return enriched;
+        if (value instanceof Map<?, ?> map) {
+            return enrichBreadthMap(map);
+        }
+        if (history && value instanceof List<?> list) {
+            return list.stream()
+                    .filter(Map.class::isInstance)
+                    .map(Map.class::cast)
+                    .map(this::enrichBreadthMap)
+                    .toList();
         }
         return value;
     }
@@ -106,7 +114,26 @@ public class MarketRedisService extends AService {
         if (DataType.HASH.equals(type)) {
             return new LinkedHashMap<>(redisTemplate.opsForHash().entries(key));
         }
+        if (DataType.STREAM.equals(type)) {
+            return readStream(key);
+        }
         return null;
+    }
+
+    private List<Map<String, Object>> readStream(String key) {
+        List<MapRecord<String, Object, Object>> records = redisTemplate.opsForStream()
+                .range(key, Range.unbounded(), Limit.limit().count(MAX_BREADTH_HISTORY_POINTS));
+        if (records == null || records.isEmpty()) {
+            return List.of();
+        }
+        return records.stream()
+                .map(record -> {
+                    Map<String, Object> values = new LinkedHashMap<>();
+                    values.put("streamId", record.getId().getValue());
+                    record.getValue().forEach((k, v) -> values.put(String.valueOf(k), v));
+                    return values;
+                })
+                .toList();
     }
 
     private Object parseJson(String json) {
@@ -135,6 +162,13 @@ public class MarketRedisService extends AService {
                 .exchange(stringValue(firstNonNull(values, "exchange")))
                 .lastUpdated(stringValue(firstNonNull(values, "lastUpdated", "last_updated", "timestamp", "updatedAt", "updated_at")))
                 .build();
+    }
+
+    private Map<String, Object> enrichBreadthMap(Map<?, ?> map) {
+        Map<String, Object> enriched = new LinkedHashMap<>();
+        map.forEach((k, v) -> enriched.put(String.valueOf(k), v));
+        addBreadthPercentages(enriched);
+        return enriched;
     }
 
     private void addBreadthPercentages(Map<String, Object> values) {
