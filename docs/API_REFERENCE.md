@@ -49,6 +49,9 @@ If the token is missing or invalid, the API returns:
   - GET /stellar-api/v1/index-ohlcv/{symbol} - Index OHLCV history by symbol
   - GET /stellar-api/v1/index-ohlcv - Index OHLCV rows by date
   - GET /stellar-api/v1/index-ohlcv/latest - Latest index OHLCV rows
+- Index Valuation
+  - GET /stellar-api/v1/index-valuation/{symbol}/historical - Historical index close, P/E, and P/B data for charts
+  - GET /stellar-api/v1/index-valuation/{symbol}/latest - Latest index valuation metrics for summary cards
 - Anomalies
   - GET /stellar-api/v1/stock-anomalies - Stock anomaly scores by prediction date
   - GET /stellar-api/v1/anomalies — Danh sách anomaly và kết quả AI analysis
@@ -568,6 +571,83 @@ curl "http://localhost:8080/stellar-api/v1/stocks/weights?sector=BANKS&dateSk=20
 | `marketWeight` | Pre-calculated stock weight. | Main value for ranking and visual sizing. |
 
 Important stock weight fields: `symbol`, `marketWeight`, `marketCap`, `sector`, `fullDate`.
+
+---
+
+## Index Valuation APIs
+
+The index valuation APIs read the pre-calculated `stellar_dm.fact_index_valuation_daily` fact table. Internal surrogate keys are resolved through `dim_symbol` and `dim_date`; responses expose only the frontend-ready `symbol` and ISO-8601 `date` values.
+
+### GET /stellar-api/v1/index-valuation/{symbol}/historical
+
+Returns historical valuation points for one index, ordered by `date` ascending for direct chart ingestion.
+
+**Path parameter:**
+- `symbol` *(required)*: index ticker, for example `VNINDEX` or `VN30`. Matching is case-insensitive.
+
+**Query parameters:**
+- `start_date` *(optional)*: inclusive ISO date in `YYYY-MM-DD` format.
+- `end_date` *(optional)*: inclusive ISO date in `YYYY-MM-DD` format.
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/index-valuation/VNINDEX/historical?start_date=2026-01-01&end_date=2026-07-21"
+```
+
+**Response (200):**
+```json
+[
+  {
+    "symbol": "VNINDEX",
+    "date": "2026-07-20",
+    "indexClose": 1280.52,
+    "pe": 13.42,
+    "pb": 1.68
+  },
+  {
+    "symbol": "VNINDEX",
+    "date": "2026-07-21",
+    "indexClose": 1285.10,
+    "pe": 13.47,
+    "pb": 1.69
+  }
+]
+```
+
+Returns an empty array when the index has no valuation data in the requested period. `400 Bad Request` is returned when `start_date` is later than `end_date` or a date is not formatted as `YYYY-MM-DD`.
+
+### GET /stellar-api/v1/index-valuation/{symbol}/latest
+
+Returns the most recent valuation point available for one index.
+
+**Path parameter:**
+- `symbol` *(required)*: index ticker, for example `VNINDEX` or `VN30`. Matching is case-insensitive.
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/index-valuation/VN30/latest"
+```
+
+**Response (200):**
+```json
+{
+  "symbol": "VN30",
+  "date": "2026-07-21",
+  "indexClose": 1392.25,
+  "pe": 12.08,
+  "pb": 1.51
+}
+```
+
+Returns `204 No Content` when no valuation data is available for the symbol.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `symbol` | string | Human-readable index ticker. |
+| `date` | string | Trading date in ISO `YYYY-MM-DD` format. |
+| `indexClose` | number | Index close price for the trading day. |
+| `pe` | number | Price-to-earnings ratio. |
+| `pb` | number | Price-to-book ratio. |
 
 ---
 
