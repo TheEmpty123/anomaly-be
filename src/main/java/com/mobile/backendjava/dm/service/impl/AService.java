@@ -70,6 +70,14 @@ public abstract class AService {
         });
     }
 
+    protected <T> T runTaskWithoutLogging(Supplier<T> task) {
+        return task.get();
+    }
+
+    protected void runTaskWithoutLogging(Runnable task) {
+        task.run();
+    }
+
     protected void runSilentTask(String taskName, String taskDetails, Runnable task) {
         try {
             runTask(taskName, taskDetails, task);
