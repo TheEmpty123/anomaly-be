@@ -51,6 +51,27 @@ public interface StockOhlcvRepository extends JpaRepository<StockOhlcv, StockOhl
             @Param("timeframe") String timeframe,
             Pageable pageable);
 
+    @Query("""
+            select o
+            from StockOhlcv o
+            join fetch o.symbol s
+            join fetch o.date d
+            where lower(o.id.timeframe) = :timeframe
+              and (:symbol is null or upper(s.symbol) = :symbol)
+              and (:sector is null or upper(s.sector) = :sector)
+              and (:dateSk is null or o.id.dateSk = :dateSk)
+              and (:fromDateSk is null or o.id.dateSk >= :fromDateSk)
+              and (:toDateSk is null or o.id.dateSk <= :toDateSk)
+            """)
+    List<StockOhlcv> findWeights(
+            @Param("symbol") String symbol,
+            @Param("sector") String sector,
+            @Param("dateSk") Integer dateSk,
+            @Param("fromDateSk") Integer fromDateSk,
+            @Param("toDateSk") Integer toDateSk,
+            @Param("timeframe") String timeframe,
+            Pageable pageable);
+
     @Query("select max(o.id.dateSk) from StockOhlcv o where lower(o.id.timeframe) = :timeframe")
     Integer findMaxDateSkByTimeframe(@Param("timeframe") String timeframe);
 }

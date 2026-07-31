@@ -43,6 +43,8 @@ If the token is missing or invalid, the API returns:
   - GET /stellar-api/v1/ohlcv/{symbol} — Lịch sử OHLCV theo mã
   - GET /stellar-api/v1/ohlcv — OHLCV cho tất cả mã trong một ngày
   - GET /stellar-api/v1/ohlcv/latest — OHLCV mới nhất cho tất cả mã
+- Stock Weights
+  - GET /stellar-api/v1/stocks/weights — Stock weight snapshot/history for frontend tables and charts
 - Index OHLCV
   - GET /stellar-api/v1/index-ohlcv/{symbol} - Index OHLCV history by symbol
   - GET /stellar-api/v1/index-ohlcv - Index OHLCV rows by date
@@ -504,6 +506,68 @@ curl "http://localhost:8080/stellar-api/v1/ohlcv/latest?timeframe=1d&limit=199"
 **Status Codes:** `200 OK`
 
 Response schema is the same as `GET /stellar-api/v1/ohlcv/{symbol}`. Use this endpoint when the frontend needs the latest available trading date automatically.
+
+---
+
+### GET /stellar-api/v1/stocks/weights
+Returns pre-calculated stock weight rows from `stellar_dm.stock_ohlcv` with symbol metadata from `stellar_dm.dim_symbol`. If `dateSk` is omitted, the backend uses the latest available `date_sk` for the requested timeframe.
+
+This endpoint is designed for frontend stock weight tables, ranking cards, and heatmap-style views.
+
+**Parameters:**
+- `symbol` *(optional)*: filter by ticker symbol, for example `FPT`
+- `sector` *(optional)*: filter by sector code, for example `BANKS`
+- `dateSk` *(optional)*: exact date in `YYYYMMDD`
+- `fromDateSk` *(optional)*: inclusive start date in `YYYYMMDD`
+- `toDateSk` *(optional)*: inclusive end date in `YYYYMMDD`
+- `timeframe` *(optional)*: defaults to `1d`
+- `limit` *(optional)*: defaults to `1000`, max `5000`
+
+**Example:**
+```bash
+curl "http://localhost:8080/stellar-api/v1/stocks/weights?sector=BANKS&dateSk=20260704&limit=1000"
+```
+
+**Response (200):**
+```json
+[
+  {
+    "symbol": "VCB",
+    "symbolSk": 101,
+    "companyName": "Ngân hàng TMCP Ngoại thương Việt Nam",
+    "sector": "BANKS",
+    "dateSk": 20260704,
+    "fullDate": "2026-07-04",
+    "timeframe": "1d",
+    "timeSk": 0,
+    "close": 98000.0,
+    "volume": 1234567,
+    "value": 120987654321,
+    "marketCap": 451234567890123,
+    "marketWeight": 0.0312
+  }
+]
+```
+
+**Response fields and usage:**
+
+| Field | Meaning | Usage |
+|-------|---------|-------|
+| `symbol` | Ticker symbol. | Table row key, routing, filter chips. |
+| `symbolSk` | Surrogate key of the symbol. | Internal drill-down key. |
+| `companyName` | Company name from `dim_symbol`. | Display label in tables and tooltips. |
+| `sector` | Sector code from `dim_symbol`. | Grouping and sector filter. |
+| `dateSk` | Date key in `YYYYMMDD`. | Snapshot date and X-axis context. |
+| `fullDate` | ISO date `YYYY-MM-DD`. | UI display and chart axis. |
+| `timeframe` | Data timeframe, usually `1d`. | Context label. |
+| `timeSk` | Time key, EOD usually `0`. | Intraday extension/context. |
+| `close` | Closing price. | Price context / tooltip. |
+| `volume` | Traded volume. | Liquidity context. |
+| `value` | Traded value. | Liquidity context / ranking. |
+| `marketCap` | Market capitalisation. | Size / ranking fallback. |
+| `marketWeight` | Pre-calculated stock weight. | Main value for ranking and visual sizing. |
+
+Important stock weight fields: `symbol`, `marketWeight`, `marketCap`, `sector`, `fullDate`.
 
 ---
 
