@@ -8,9 +8,6 @@ import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Array;
-import java.util.Collection;
-import java.util.Map;
 import java.util.function.Supplier;
 
 @Service
@@ -39,16 +36,16 @@ public abstract class AService {
         if (rootTask) {
             TaskLogContext.setTaskId(taskId);
         }
-        log.info("event=task.start service={} task={} context={}",
+        log.info("event=task.processing.start message=\"Starting service task\" service={} task={} context={}",
                 getClass().getSimpleName(), taskName, contextOrNone(taskDetails));
         try {
             T result = task.get();
-            log.info("event=task.finish service={} task={} outcome=success durationMs={} context={} result={}",
+            log.info("event=task.processing.finish message=\"Finished service task\" service={} task={} outcome=success durationMs={} context={} result={}",
                     getClass().getSimpleName(), taskName, System.currentTimeMillis() - startedAt,
-                    contextOrNone(taskDetails), summarizeResult(result));
+                    contextOrNone(taskDetails), serializeResult(result));
             return result;
         } catch (RuntimeException | Error ex) {
-            log.error("event=task.finish service={} task={} outcome=failure durationMs={} context={} errorType={} errorMessage={}",
+            log.error("event=task.processing.finish message=\"Service task failed\" service={} task={} outcome=failure durationMs={} context={} errorType={} errorMessage={}",
                     getClass().getSimpleName(), taskName, System.currentTimeMillis() - startedAt,
                     contextOrNone(taskDetails), ex.getClass().getSimpleName(), ex.getMessage(), ex);
             throw ex;
@@ -71,6 +68,14 @@ public abstract class AService {
             task.run();
             return null;
         });
+    }
+
+    protected <T> T runTaskWithoutLogging(Supplier<T> task) {
+        return task.get();
+    }
+
+    protected void runTaskWithoutLogging(Runnable task) {
+        task.run();
     }
 
     protected void runSilentTask(String taskName, String taskDetails, Runnable task) {
@@ -98,22 +103,14 @@ public abstract class AService {
         return taskDetails;
     }
 
-    private String summarizeResult(Object result) {
+    private String serializeResult(Object result) {
         if (result == null) {
-            return "type=null";
+            return "null";
         }
-        if (result instanceof Collection<?> collection) {
-            return "type=" + result.getClass().getSimpleName() + ",size=" + collection.size();
+        try {
+            return objectMapper.writeValueAsString(result);
+        } catch (Exception ex) {
+            return String.valueOf(result);
         }
-        if (result instanceof Map<?, ?> map) {
-            return "type=" + result.getClass().getSimpleName() + ",size=" + map.size();
-        }
-        if (result.getClass().isArray()) {
-            return "type=" + result.getClass().getComponentType().getSimpleName() + "[],size=" + Array.getLength(result);
-        }
-        if (result instanceof CharSequence text) {
-            return "type=" + result.getClass().getSimpleName() + ",length=" + text.length();
-        }
-        return "type=" + result.getClass().getSimpleName();
     }
 }

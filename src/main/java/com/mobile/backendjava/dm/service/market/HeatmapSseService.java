@@ -23,16 +23,17 @@ public class HeatmapSseService extends AService {
     private final Map<SseEmitter, SseConnection> emitters = new ConcurrentHashMap<>();
 
     public HeatmapSseService() {
-        initLogger();
+        // initLogger(); // Temporarily disable SSE startup log.
     }
 
     public SseEmitter connect() {
-        return runTask("connectHeatmapSse", detail("activeEmittersBefore", emitters.size()), () -> {
+        // return runTask("connectHeatmapSse", detail("activeEmittersBefore", emitters.size()), () -> {
+        return runTaskWithoutLogging(() -> {
             SseEmitter emitter = new SseEmitter(SSE_TIMEOUT_MS);
             SseConnection connection = new SseConnection(UUID.randomUUID().toString(), CorrelationIdContext.get());
             emitters.put(emitter, connection);
-            log.info("event=sse.connection.opened connectionId={} activeConnections={} timeoutMs={}",
-                    connection.connectionId(), emitters.size(), SSE_TIMEOUT_MS);
+            // log.info("event=sse.connection.opened connectionId={} activeConnections={} timeoutMs={}",
+            //         connection.connectionId(), emitters.size(), SSE_TIMEOUT_MS);
             emitter.onCompletion(() -> closeConnection(emitter, "completed", null));
             emitter.onTimeout(() -> closeConnection(emitter, "timeout", null));
             emitter.onError(error -> closeConnection(emitter, "error", error));
@@ -42,9 +43,10 @@ public class HeatmapSseService extends AService {
     }
 
     public void broadcastQuote(String quoteJson) {
-        runTask("broadcastHeatmapQuote",
-                details(detail("activeEmitters", emitters.size()), detail("payloadChars", quoteJson == null ? 0 : quoteJson.length())),
-                () -> broadcast("quote", quoteJson));
+        // runTask("broadcastHeatmapQuote",
+        //         details(detail("activeEmitters", emitters.size()), detail("payloadChars", quoteJson == null ? 0 : quoteJson.length())),
+        //         () -> broadcast("quote", quoteJson));
+        runTaskWithoutLogging(() -> broadcast("quote", quoteJson));
     }
 
     @Scheduled(fixedRate = 20000)
@@ -59,27 +61,27 @@ public class HeatmapSseService extends AService {
 
     private void broadcast(String eventName, Object data, boolean logLifecycle) {
         String sourceCorrelationId = CorrelationIdContext.get();
-        if (logLifecycle) {
-            log.info("event=sse.broadcast.start eventName={} connectionCount={} sourceCorrelationId={}",
-                    eventName, emitters.size(), sourceCorrelationId);
-        }
+        // if (logLifecycle) {
+        //     log.info("event=sse.broadcast.start eventName={} connectionCount={} sourceCorrelationId={}",
+        //             eventName, emitters.size(), sourceCorrelationId);
+        // }
         for (Map.Entry<SseEmitter, SseConnection> entry : emitters.entrySet()) {
             send(entry.getKey(), entry.getValue(), eventName, data, sourceCorrelationId, logLifecycle);
         }
-        if (logLifecycle) {
-            log.info("event=sse.broadcast.finish eventName={} connectionCount={} sourceCorrelationId={}",
-                    eventName, emitters.size(), sourceCorrelationId);
-        }
+        // if (logLifecycle) {
+        //     log.info("event=sse.broadcast.finish eventName={} connectionCount={} sourceCorrelationId={}",
+        //             eventName, emitters.size(), sourceCorrelationId);
+        // }
     }
 
     private void send(SseEmitter emitter, SseConnection connection, String eventName, Object data,
                       String sourceCorrelationId, boolean logLifecycle) {
         CorrelationIdContext.runWith(connection.correlationId(), () -> {
             try {
-                if (logLifecycle) {
-                    log.info("event=sse.event.send connectionId={} eventName={} payloadType={} sourceCorrelationId={}",
-                            connection.connectionId(), eventName, data == null ? "null" : data.getClass().getSimpleName(), sourceCorrelationId);
-                }
+                // if (logLifecycle) {
+                //     log.info("event=sse.event.send connectionId={} eventName={} payloadType={} sourceCorrelationId={}",
+                //             connection.connectionId(), eventName, data == null ? "null" : data.getClass().getSimpleName(), sourceCorrelationId);
+                // }
                 SseEmitter.SseEventBuilder event = SseEmitter.event().name(eventName);
                 if (data instanceof String) {
                     event.data(data);
@@ -87,14 +89,14 @@ public class HeatmapSseService extends AService {
                     event.data(data, MediaType.APPLICATION_JSON);
                 }
                 emitter.send(event);
-                if (logLifecycle) {
-                    log.info("event=sse.event.sent connectionId={} eventName={} sourceCorrelationId={}",
-                            connection.connectionId(), eventName, sourceCorrelationId);
-                }
+                // if (logLifecycle) {
+                //     log.info("event=sse.event.sent connectionId={} eventName={} sourceCorrelationId={}",
+                //             connection.connectionId(), eventName, sourceCorrelationId);
+                // }
             } catch (IOException | IllegalStateException ex) {
-                log.warn("event=sse.event.failed connectionId={} eventName={} sourceCorrelationId={} errorType={} errorMessage={}",
-                        connection.connectionId(), eventName, sourceCorrelationId,
-                        ex.getClass().getSimpleName(), ex.getMessage());
+                // log.warn("event=sse.event.failed connectionId={} eventName={} sourceCorrelationId={} errorType={} errorMessage={}",
+                //         connection.connectionId(), eventName, sourceCorrelationId,
+                //         ex.getClass().getSimpleName(), ex.getMessage());
                 closeConnection(emitter, "send-failed", ex);
             }
         });
@@ -106,13 +108,13 @@ public class HeatmapSseService extends AService {
             return;
         }
         CorrelationIdContext.runWith(connection.correlationId(), () -> {
-            if (error == null) {
-                log.info("event=sse.connection.closed connectionId={} reason={} activeConnections={}",
-                        connection.connectionId(), reason, emitters.size());
-            } else {
-                log.warn("event=sse.connection.closed connectionId={} reason={} activeConnections={} errorType={} errorMessage={}",
-                        connection.connectionId(), reason, emitters.size(), error.getClass().getSimpleName(), error.getMessage());
-            }
+            // if (error == null) {
+            //     log.info("event=sse.connection.closed connectionId={} reason={} activeConnections={}",
+            //             connection.connectionId(), reason, emitters.size());
+            // } else {
+            //     log.warn("event=sse.connection.closed connectionId={} reason={} activeConnections={} errorType={} errorMessage={}",
+            //             connection.connectionId(), reason, emitters.size(), error.getClass().getSimpleName(), error.getMessage());
+            // }
         });
     }
 

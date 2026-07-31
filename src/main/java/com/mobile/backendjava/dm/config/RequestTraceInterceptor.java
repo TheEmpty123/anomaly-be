@@ -16,16 +16,18 @@ public class RequestTraceInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        log.info("event=handler.start handler={} method={} path={}", handlerName(handler), request.getMethod(), request.getRequestURI());
+        log.info("event=handler.processing.start message=\"Starting controller processing\" handler={} method={} path={}",
+                handlerName(handler), request.getMethod(), request.getRequestURI());
         return true;
     }
 
     @Override
     public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
         if (ex == null) {
-            log.info("event=handler.finish handler={} status={}", handlerName(handler), response.getStatus());
+            log.info("event=handler.processing.finish message=\"Finished controller processing\" handler={} status={}",
+                    handlerName(handler), response.getStatus());
         } else {
-            log.error("event=handler.finish handler={} status={} outcome=failure errorType={} errorMessage={}",
+            log.error("event=handler.processing.finish message=\"Controller processing failed\" handler={} status={} outcome=failure errorType={} errorMessage={}",
                     handlerName(handler), response.getStatus(), ex.getClass().getSimpleName(), ex.getMessage(), ex);
         }
     }
