@@ -21,6 +21,10 @@ WORKDIR /app
 
 COPY --from=builder /app/target/backend.jar app.jar
 
+RUN mkdir -p /data/backend/logs
+
 EXPOSE 8080
+
+VOLUME ["/data/backend/logs"]
 
 ENTRYPOINT ["java","-jar","app.jar"]

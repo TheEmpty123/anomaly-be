@@ -117,7 +117,7 @@ The Dockerfile uses a Maven/Temurin 17 build stage and produces an image that ex
 
 ~~~bash
 docker build -t stellar-backend:local .
-docker run --rm -p 8080:8080 \
+docker run --rm -p 8080:8080 -v /data/backend/logs:/data/backend/logs \
   -e SPRING_DATASOURCE_URL="jdbc:postgresql://host.docker.internal:5432/stellar_dm" \
   -e SPRING_DATASOURCE_USERNAME="postgres" \
   -e SPRING_DATASOURCE_PASSWORD="<password>" \
@@ -128,9 +128,15 @@ docker run --rm -p 8080:8080 \
 
 Pass real PostgreSQL, Redis, and JWT settings for any non-local deployment. The image build skips tests; run the appropriate verification before building a release image.
 
+### Persistent logs
+
+Logback writes a general application log, one log per active controller, service, configuration, and utility logs, the heatmap SSE-service log, and a dedicated `heartbeat.log` to /data/backend/logs. Every file rolls daily or after 100 MB, compresses completed files, and retains 30 days of history.
+
+The Docker image declares this directory as a volume. The Helm chart mounts the Kubernetes node directory at the same path with a hostPath volume. The container image runs as its default root user, so the Kubelet-created DirectoryOrCreate path is writable. If the deployment is later changed to a non-root user, the node directory must be owned by or writable to that UID and group before rollout.
+
 ## Helm and CI/CD
 
-The Helm chart lives in helm/backend. It deploys a ClusterIP service on port 8080 and reads database credentials and the JWT secret from the configured Kubernetes secret (backend-db-secret by default).
+The Helm chart lives in helm/backend. It deploys a ClusterIP service on port 8080, mounts /data/backend/logs from the node for persistent logs, and reads database credentials and the JWT secret from the configured Kubernetes secret (backend-db-secret by default).
 
 ~~~bash
 helm upgrade --install backend helm/backend
@@ -149,7 +155,8 @@ src/main/java/com/mobile/backendjava/
   dm/controllers/stellar/    # Active HTTP API controllers
   dm/dto/                    # Response and query DTOs
   dm/entities/               # JPA mappings for the data mart
-  dm/repository/             # PostgreSQL queries
+  dm/repository/jpa/         # PostgreSQL/JPA repositories
+  dm/repository/redis/       # Reserved for Spring Data Redis repositories
   dm/service/                # Business and Redis/SSE services
 src/main/resources/
   application.properties

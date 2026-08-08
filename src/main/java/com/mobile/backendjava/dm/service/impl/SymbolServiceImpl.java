@@ -2,8 +2,8 @@ package com.mobile.backendjava.dm.service.impl;
 
 import com.mobile.backendjava.dm.dto.market.SymbolDTO;
 import com.mobile.backendjava.dm.entities.DimSymbol;
-import com.mobile.backendjava.dm.repository.DimSymbolRepository;
-import com.mobile.backendjava.dm.repository.StockOhlcvRepository;
+import com.mobile.backendjava.dm.repository.jpa.DimSymbolRepository;
+import com.mobile.backendjava.dm.repository.jpa.StockOhlcvRepository;
 import com.mobile.backendjava.dm.service.SymbolService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;

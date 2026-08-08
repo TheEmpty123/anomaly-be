@@ -1,6 +1,6 @@
 package com.mobile.backendjava.dm.service.impl;
 
-import com.mobile.backendjava.dm.repository.DataMartRepository;
+import com.mobile.backendjava.dm.repository.jpa.DataMartRepository;
 import com.mobile.backendjava.dm.service.DataMartService;
 import org.springframework.stereotype.Service;
 

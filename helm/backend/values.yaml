@@ -14,6 +14,10 @@ service:
 
 containerPort: 8080
 
+logging:
+  hostPath: /data/backend/logs
+  mountPath: /data/backend/logs
+
 resources:
   requests:
     cpu: 100m

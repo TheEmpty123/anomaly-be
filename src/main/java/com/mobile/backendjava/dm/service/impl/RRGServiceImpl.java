@@ -2,7 +2,7 @@ package com.mobile.backendjava.dm.service.impl;
 
 import com.mobile.backendjava.dm.entities.SectorRrgCache;
 import com.mobile.backendjava.dm.model.Regime;
-import com.mobile.backendjava.dm.repository.RRGRepository;
+import com.mobile.backendjava.dm.repository.jpa.RRGRepository;
 import com.mobile.backendjava.dm.service.RRGService;
 import org.springframework.stereotype.Service;
 
