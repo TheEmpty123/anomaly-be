@@ -1,4 +1,4 @@
-package com.mobile.backendjava.dm.repository;
+package com.mobile.backendjava.dm.repository.jpa;
 
 import com.mobile.backendjava.dm.entities.IndexOhlcv;
 import com.mobile.backendjava.dm.entities.IndexOhlcvId;

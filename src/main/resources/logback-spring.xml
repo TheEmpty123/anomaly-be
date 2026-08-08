@@ -249,6 +249,7 @@
     <logger name="com.mobile.backendjava.dm.service" level="INFO" additivity="false"><appender-ref ref="SERVICE_FILE"/></logger>
     <logger name="com.mobile.backendjava.dm.config" level="INFO" additivity="false"><appender-ref ref="CONFIGURATION_FILE"/></logger>
     <logger name="com.mobile.backendjava.dm.utils" level="INFO" additivity="false"><appender-ref ref="UTILITY_FILE"/></logger>
+    <logger name="com.mobile.backendjava" level="INFO" additivity="false"><appender-ref ref="APPLICATION_FILE"/></logger>
 
     <root level="INFO"><appender-ref ref="APPLICATION_FILE"/></root>
 </configuration>

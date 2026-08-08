@@ -155,7 +155,8 @@ src/main/java/com/mobile/backendjava/
   dm/controllers/stellar/    # Active HTTP API controllers
   dm/dto/                    # Response and query DTOs
   dm/entities/               # JPA mappings for the data mart
-  dm/repository/             # PostgreSQL queries
+  dm/repository/jpa/         # PostgreSQL/JPA repositories
+  dm/repository/redis/       # Reserved for Spring Data Redis repositories
   dm/service/                # Business and Redis/SSE services
 src/main/resources/
   application.properties

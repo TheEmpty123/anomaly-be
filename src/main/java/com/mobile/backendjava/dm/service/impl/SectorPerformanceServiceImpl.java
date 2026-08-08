@@ -2,7 +2,7 @@ package com.mobile.backendjava.dm.service.impl;
 
 import com.mobile.backendjava.dm.entities.SectorPerformance;
 import com.mobile.backendjava.dm.model.Timeframe;
-import com.mobile.backendjava.dm.repository.SectorPerformanceRepository;
+import com.mobile.backendjava.dm.repository.jpa.SectorPerformanceRepository;
 import com.mobile.backendjava.dm.service.SectorPerformanceService;
 import org.springframework.stereotype.Service;
 
