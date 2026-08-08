@@ -1,93 +1,131 @@
 # API Reference
 
-## Stellar API - `/stellar-api/v1`
+This document describes the active Spring Boot endpoints implemented by the repository. The default local base URL is:
 
-## Authentication
+~~~text
+http://localhost:8080
+~~~
 
-All endpoints under `/stellar-api/v1/**` require a JWT Bearer Token.
+The default Stellar API prefix is:
 
-REST API header:
-```http
+~~~text
+/stellar-api/v1
+~~~
+
+There is no generated Swagger or OpenAPI endpoint in this application.
+
+## Authentication and common behavior
+
+All endpoints under the default Stellar API prefix require a JWT bearer token when STELLAR_JWT_ENABLED is true (the default).
+
+~~~http
 Authorization: Bearer <JWT_TOKEN>
-```
+~~~
 
-Example:
-```bash
-curl -H "Authorization: Bearer <JWT_TOKEN>" \
-https://api.staging-stellar.io.vn/stellar-api/v1/ohlcv/latest
-```
+The token must be signed with the configured HMAC secret and contain the configured issuer and audience claims. Defaults are:
 
-SSE browser usage:
-```text
+| Claim/configuration | Default |
+| --- | --- |
+| issuer | stellar-api |
+| audience | stellar-backend |
+| JWT enabled | true |
+
+If authentication fails, the service returns:
+
+~~~http
+HTTP/1.1 401 Unauthorized
+Content-Type: application/json
+
+{"error":"Unauthorized","message":"Missing or invalid JWT token"}
+~~~
+
+For browser Server-Sent Events only, the heatmap stream accepts the token query parameter because EventSource cannot set an Authorization header:
+
+~~~text
 /stellar-api/v1/heatmap/stream?token=<JWT_TOKEN>
-```
+~~~
 
-Browser `EventSource` does not support custom `Authorization` headers, so the SSE stream endpoint also accepts the JWT in the `token` query parameter. This query-param token fallback is only supported for `/stellar-api/v1/heatmap/stream`.
+Do not use a query token for other endpoints. It is not supported. Do not disable JWT outside a controlled local environment.
 
-If the token is missing or invalid, the API returns:
-```http
-401 Unauthorized
-```
+Every response includes an X-Correlation-ID header. Use it when correlating a client request with application logs.
 
-## Tổng hợp API hiện có
-- Foreign Flow
-  - GET /stellar-api/v1/foreign-flow/chart — Dữ liệu chuỗi thời gian theo mã cổ phiếu/ngành/thị trường
-  - GET /stellar-api/v1/foreign-flow/heatmap — Dữ liệu heatmap theo ngày và timeframe
-- Heatmap (Realtime qua SSE)
-  - GET /stellar-api/v1/heatmap/snapshot — Ảnh chụp heatmap hiện tại (từ Redis)
-  - GET /stellar-api/v1/heatmap/stream — Luồng sự kiện Server-Sent Events (SSE) cập nhật realtime
-- Market Breadth
-  - GET /stellar-api/v1/market/breadth — Độ rộng thị trường hiện tại từ Redis
-  - GET /stellar-api/v1/market/breadth/history — Độ rộng thị trường theo ngày
-- OHLCV
-  - GET /stellar-api/v1/ohlcv/{symbol} — Lịch sử OHLCV theo mã
-  - GET /stellar-api/v1/ohlcv — OHLCV cho tất cả mã trong một ngày
-  - GET /stellar-api/v1/ohlcv/latest — OHLCV mới nhất cho tất cả mã
-- Stock Weights
-  - GET /stellar-api/v1/stocks/weights — Stock weight snapshot/history for frontend tables and charts
-- Index OHLCV
-  - GET /stellar-api/v1/index-ohlcv/{symbol} - Index OHLCV history by symbol
-  - GET /stellar-api/v1/index-ohlcv - Index OHLCV rows by date
-  - GET /stellar-api/v1/index-ohlcv/latest - Latest index OHLCV rows
-- Index Valuation
-  - GET /stellar-api/v1/index-valuation/{symbol}/historical - Historical index close, P/E, and P/B data for charts
-  - GET /stellar-api/v1/index-valuation/{symbol}/latest - Latest index valuation metrics for summary cards
-- Anomalies
-  - GET /stellar-api/v1/stock-anomalies - Stock anomaly scores by prediction date
-  - GET /stellar-api/v1/anomalies — Danh sách anomaly và kết quả AI analysis
-- Symbols
-  - GET /stellar-api/v1/symbols/available - Available symbols with OHLCV data
-  - GET /stellar-api/v1/symbols — Danh sách metadata cơ bản của mã
-- Market Structure
-  - GET /stellar-api/v1/market-structure — Ảnh chụp cấu trúc thị trường mới nhất
-- RRG
-  - GET /stellar-api/v1/rrg — Danh sách RRG ngành theo regime
-- Sector Performance
-  - GET /stellar-api/v1/sector-performance — Hiệu suất ngành theo timeframe
+### Response conventions
 
-## Foreign Flow APIs
+- JSON is the default response format. Dates use ISO-8601 strings; dateSk uses the numeric YYYYMMDD form.
+- A 200 response with an empty array means the request was valid but found no rows.
+- 204 No Content means the endpoint has no current object or no applicable rows. Its body is empty.
+- A 400 response means the request could not be bound or passed endpoint validation. Several controller-generated 400 responses intentionally have an empty body.
+- A 401 response can occur on every Stellar endpoint while JWT is enabled.
+- Limit values less than 1 are treated as the endpoint default, not as an error.
 
-### GET /stellar-api/v1/foreign-flow/chart
-Returns foreign flow time-series data by symbol, sector, or market. This supports line charts, cumulative foreign flow charts, and comparison between `priceIndex100` and `benchmarkIndex100`.
+The controller mappings are configurable through API_STELLAR_BASE_PATH, but the JWT filter and SSE token fallback are currently fixed to the default /stellar-api/v1 path. Keep the default path when JWT protection is enabled.
 
-**Parameters:**
-- `entityType` *(required)*: examples `STOCK`, `MARKET`
-- `entityCode` *(required)*: examples `FPT`, `BANK`, `VNINDEX`
-- `timeframe` *(required)*: examples `1M`, `3M`, `6M`, `1Y`
-- `fromDateSk` *(optional)*: inclusive start date in `YYYYMMDD`
-- `toDateSk` *(optional)*: inclusive end date in `YYYYMMDD`
-- `limit` *(optional)*: defaults to `500`, max `1000`
+## Health
 
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/foreign-flow/chart?entityType=STOCK&entityCode=FPT&timeframe=1D&limit=200"
-```
+### GET /actuator/health
 
-**Response (200):**
-```json
+Unprotected health endpoint. It is the only exposed Actuator endpoint.
+
+~~~bash
+curl http://localhost:8080/actuator/health
+~~~
+
+Returns Spring Boot health information for the running application. Health details are enabled in configuration, so protect this endpoint at the deployment edge when necessary.
+
+## Endpoint index
+
+| Method | Path | Description |
+| --- | --- | --- |
+| GET | /foreign-flow/chart | Foreign-flow time series for an entity |
+| GET | /foreign-flow/heatmap | Foreign-flow snapshot by date and timeframe |
+| GET | /heatmap/snapshot | Current Redis-backed quote snapshot |
+| GET | /heatmap/stream | Realtime quote stream using SSE |
+| GET | /market/breadth | Current Redis-backed market breadth |
+| GET | /market/breadth/history | Historical Redis-backed market breadth |
+| GET | /stock-anomalies | Stock anomaly scores for a prediction date |
+| GET | /ohlcv/{symbol} | OHLCV history for one symbol |
+| GET | /ohlcv | OHLCV market snapshot for one date |
+| GET | /ohlcv/latest | Latest OHLCV market snapshot |
+| GET | /stocks/weights | Stock market-weight snapshot or range |
+| GET | /index-impact/{indexCode}/latest | Current constituent-weight and index-impact snapshot |
+| GET | /index-impact/{indexCode}/history | Intraday index-impact timeline from Redis Stream |
+| GET | /index-valuation/{symbol}/historical | Historical index valuation data |
+| GET | /index-valuation/{symbol}/latest | Latest index valuation data |
+| GET | /index-ohlcv/{symbol} | Index OHLCV history for one symbol |
+| GET | /index-ohlcv | Index OHLCV snapshot for one date |
+| GET | /index-ohlcv/latest | Latest index OHLCV snapshot |
+| GET | /symbols | Symbol metadata |
+| GET | /symbols/available | Symbols that have OHLCV data |
+| GET | /market-structure | Latest market-structure cache row |
+| GET | /rrg | Sector relative-rotation graph data |
+| GET | /sector-performance | Sector performance chart data |
+
+All paths in the table are relative to /stellar-api/v1. The application exposes /stock-anomalies, not a legacy /anomalies route.
+
+## Foreign flow
+
+### GET /foreign-flow/chart
+
+Returns a time series from the foreign-flow chart cache. Results are ordered by dateSk ascending.
+
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| entityType | Yes | Entity category, normalized to uppercase; it must match cached data |
+| entityCode | Yes | Entity identifier, normalized to uppercase; for example FPT or VNINDEX |
+| timeframe | Yes | Cached timeframe, normalized to uppercase; for example 1D or 1M |
+| fromDateSk | No | Inclusive start date in YYYYMMDD |
+| toDateSk | No | Inclusive end date in YYYYMMDD |
+| limit | No | Default 500, maximum 1000 |
+
+~~~bash
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  "http://localhost:8080/stellar-api/v1/foreign-flow/chart?entityType=STOCK&entityCode=FPT&timeframe=1D&limit=200"
+~~~
+
+~~~json
 [
   {
-    "entityType": "SYMBOL",
+    "entityType": "STOCK",
     "entityCode": "FPT",
     "dateSk": 20260704,
     "timeframe": "1D",
@@ -103,901 +141,537 @@ curl "http://localhost:8080/stellar-api/v1/foreign-flow/chart?entityType=STOCK&e
     "ingestionTime": "2026-07-04T17:30:00"
   }
 ]
-```
+~~~
 
-**Response fields and chart usage:**
+Fields are omitted when the cached value is null. A missing required parameter returns 400.
 
-| Field | Meaning | Chart usage |
-|-------|---------|-------------|
-| `entityType` | Loai entity cua chuoi du lieu, vi du `SYMBOL`, `SECTOR`, `MARKET`. | Context/filter label. |
-| `entityCode` | Ma entity, vi du `FPT`, `BANK`, `VNINDEX`. | Series label. |
-| `dateSk` | Ngay du lieu dang `YYYYMMDD`. | **Required** for X-axis. |
-| `timeframe` | Khung thoi gian cua chuoi du lieu. | Context label/filter. |
-| `buyVal` | Gia tri mua cua khoi ngoai. | **Required** for buy/sell bar or stacked chart. |
-| `sellVal` | Gia tri ban cua khoi ngoai. | **Required** for buy/sell bar or stacked chart. |
-| `netVal` | Gia tri mua rong: buy minus sell. | **Required** for net-flow line/bar chart. |
-| `cumulativeNetVal` | Luy ke mua rong den ngay hien tai trong timeframe. | **Required** for cumulative flow line chart. |
-| `close` | Gia dong cua entity neu co. | Price overlay or tooltip. |
-| `priceIndex100` | Gia entity quy ve moc 100. | **Required** for relative performance chart. |
-| `benchmarkCode` | Ma benchmark dung de so sanh. | Legend/context. |
-| `benchmarkClose` | Gia dong cua benchmark. | Tooltip/context. |
-| `benchmarkIndex100` | Benchmark quy ve moc 100. | **Required** for relative performance chart. |
-| `ingestionTime` | Thoi diem cache/ETL ghi du lieu. | Debug/staleness indicator. |
+### GET /foreign-flow/heatmap
 
-Important chart fields: `dateSk`, `netVal`, `cumulativeNetVal`, `buyVal`, `sellVal`, `priceIndex100`, `benchmarkIndex100`.
+Returns a foreign-flow heatmap snapshot. BUY results are sorted by cumulativeNetVal descending; SELL results are sorted ascending. Unfiltered and NEUTRAL results are sorted by the absolute value of cumulativeNetVal.
 
-**Status Codes:** `200 OK` | `400 Bad Request`
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| dateSk | Yes | Snapshot date in YYYYMMDD |
+| timeframe | Yes | Cached timeframe, normalized to uppercase |
+| direction | No | BUY, SELL, or NEUTRAL |
+| limit | No | Default 199, maximum 1000 |
 
----
+~~~bash
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  "http://localhost:8080/stellar-api/v1/foreign-flow/heatmap?dateSk=20260704&timeframe=1D&direction=BUY"
+~~~
 
-### GET /stellar-api/v1/foreign-flow/heatmap
-Returns foreign flow heatmap data by date and timeframe. This supports foreign flow heatmaps and optional filtering by net buy/sell direction.
-
-**Parameters:**
-- `dateSk` *(required)*: date in `YYYYMMDD`
-- `timeframe` *(required)*: examples `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`
-- `direction` *(optional)*: `BUY`, `SELL`, `NEUTRAL`
-- `limit` *(optional)*: defaults to `199`, max `1000`
-
-**Examples:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/foreign-flow/heatmap?dateSk=20260704&timeframe=1D&limit=199"
-curl "http://localhost:8080/stellar-api/v1/foreign-flow/heatmap?dateSk=20260704&timeframe=1D&direction=BUY&limit=50"
-```
-
-**Response (200):**
-```json
+~~~json
 [
   {
-    "dateSk": 20260703,
-    "timeframe": "1M",
-    "symbol": "HPG",
-    "symbolSk": 76,
-    "netVal": -40537096600.0,
-    "cumulativeNetVal": -357382926800.0,
-    "close": 23250.0,
-    "pctChange": -0.6410256410256387,
-    "volume": 15963512,
-    "value": 372335129700,
-    "marketCap": 196298925090000,
-    "marketWeight": 0.0216431577863547,
-    "rankNetBuy": 1529,
-    "rankNetSell": 4,
-    "intensity": 0.1702643478391268,
-    "direction": "SELL",
-    "ingestionTime": "2026-07-03T10:39:48.968762"
-  }
-]
-```
-
-**Response fields and heatmap usage:**
-
-| Field | Meaning | Heatmap/chart usage |
-|-------|---------|---------------------|
-| `dateSk` | Ngay du lieu dang `YYYYMMDD`. | Context/filter label. |
-| `timeframe` | Khung thoi gian aggregate, vi du `1M`. | Context/filter label. |
-| `symbol` | Ma co phieu/index. | **Required** as tile id and label. |
-| `symbolSk` | Surrogate key cua symbol trong data mart. | Internal id, useful for drill-down. |
-| `netVal` | Gia tri mua rong cua khoi ngoai trong ky. | **Required** for color/tooltip; positive is net buy, negative is net sell. |
-| `cumulativeNetVal` | Luy ke mua rong trong timeframe. | **Required** for stronger signal/ranking tooltip. |
-| `netVol` | Khoi luong mua rong neu ETL co data. | Optional; ignore when null. |
-| `cumulativeNetVol` | Luy ke khoi luong mua rong neu ETL co data. | Optional; ignore when null. |
-| `close` | Gia dong/last price tai ngay snapshot. | Tooltip and detail panel. |
-| `pctChange` | % thay doi gia. | Secondary color/tooltip for price move. |
-| `volume` | Khoi luong khop lenh. | Tooltip/liquidity context. |
-| `value` | Gia tri giao dich. | Tooltip/liquidity context. |
-| `marketCap` | Von hoa thi truong. | **Recommended** for tile size. |
-| `marketWeight` | Ty trong von hoa/thi truong. | **Recommended** for tile size or weighting. |
-| `rankNetBuy` | Thu hang mua rong; so nho hon la mua rong manh hon. | Sort/filter top net-buy. |
-| `rankNetSell` | Thu hang ban rong; so nho hon la ban rong manh hon. | Sort/filter top net-sell. |
-| `intensity` | Do manh tin hieu da normalize. | **Required** for heatmap color opacity/intensity. |
-| `direction` | Huong dong tien: `BUY`, `SELL`, `NEUTRAL`. | **Required** for color palette. |
-| `ingestionTime` | Thoi diem cache/ETL ghi du lieu. | Debug/staleness indicator. |
-
-Important heatmap fields: `symbol`, `direction`, `intensity`, `netVal`, `cumulativeNetVal`, `marketCap` or `marketWeight`.
-
-**Status Codes:** `200 OK` | `400 Bad Request`
-
----
-
-## Heatmap (Realtime SSE) APIs
-
-### GET /stellar-api/v1/heatmap/snapshot
-Trả về ảnh chụp dữ liệu Heatmap hiện tại được lưu trong Redis. Phù hợp để khởi tạo màn hình trước khi mở luồng realtime.
-
-- Response: Array các đối tượng HeatmapQuoteDTO
-- Status Codes: `200 OK`
-
-Ví dụ gọi:
-```bash
-curl "http://localhost:8080/stellar-api/v1/heatmap/snapshot"
-```
-
-Ví dụ phản hồi (200):
-```json
-[
-  {
+    "dateSk": 20260704,
+    "timeframe": "1D",
     "symbol": "FPT",
-    "price": 123400,
-    "refPrice": 122000,
-    "pctChange": 1.15,
-    "volume": 1000000,
-    "txnValue": 123400000000,
-    "marketCap": 150000000000000,
-    "status": "TRADING",
-    "sector": "TECHNOLOGY",
-    "industry": "Software",
-    "exchange": "HOSE",
-    "lastUpdated": "2026-07-04T18:59:30Z"
+    "symbolSk": 76,
+    "netVal": 3000000000,
+    "cumulativeNetVal": 15000000000,
+    "netVol": 200000,
+    "cumulativeNetVol": 900000,
+    "close": 123400,
+    "pctChange": 1.2,
+    "volume": 15963512,
+    "value": 1960000000000,
+    "marketCap": 210000000000000,
+    "marketWeight": 0.031,
+    "rankNetBuy": 1,
+    "rankNetSell": 150,
+    "intensity": 0.91,
+    "direction": "BUY",
+    "ingestionTime": "2026-07-04T17:30:00"
   }
 ]
-```
+~~~
 
-**Response fields and realtime heatmap usage:**
+## Realtime market data
 
-| Field | Meaning | Heatmap usage |
-|-------|---------|---------------|
-| `symbol` | Mã cổ phiếu. | **Required** as tile id and update key. |
-| `price` | Giá khớp/last price hiện tại. | Tile label or tooltip. |
-| `refPrice` | Giá tham chiếu. | Tooltip and price-change calculation fallback. |
-| `pctChange` | % thay đổi so với tham chiếu. | **Required** for price heatmap color. |
-| `volume` | Khối lượng giao dịch. | Tooltip/liquidity context. |
-| `txnValue` | Giá trị giao dịch. | Tooltip/liquidity context. |
-| `marketCap` | Vốn hóa. | **Recommended** for tile size. |
-| `status` | Trạng thái giao dịch, ví dụ `TRADING`, `HALTED`. | Style disabled/paused tiles. |
-| `sector` | Ngành/cụm sector. | Grouping/filter. |
-| `industry` | Ngành chi tiết. | Tooltip/filter. |
-| `exchange` | Sàn giao dịch. | Filter/grouping. |
-| `lastUpdated` | Thời điểm update ISO-8601. | Staleness indicator. |
+### GET /heatmap/snapshot
 
-Important realtime heatmap fields: `symbol`, `pctChange`, `marketCap`, `price`, `volume`, `txnValue`, `lastUpdated`.
+Reads current quote records from Redis and returns an array. It returns 200 with an empty array when no quote keys exist.
 
----
+~~~bash
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/stellar-api/v1/heatmap/snapshot
+~~~
 
-### GET /stellar-api/v1/heatmap/stream
-Luồng Server-Sent Events (SSE) cung cấp cập nhật realtime cho Heatmap.
+Each item has this shape:
 
-- Produces: `text/event-stream`
-- Sự kiện gửi ra:
-  - `ping`: heartbeat định kỳ để giữ kết nối (mỗi ~20s)
-  - `quote`: bản tin giá/heatmap dạng JSON (string JSON hoặc object JSON)
-- Timeout kết nối mặc định: ~30 phút (server sẽ đóng nếu không hoạt động). Client nên tự động reconnect.
+| Field | Type | Meaning |
+| --- | --- | --- |
+| symbol | string | Ticker or quote identifier |
+| price | number | Last price |
+| refPrice | number | Reference price |
+| pctChange | number | Percentage price change |
+| volume | integer | Trading volume |
+| txnValue | number | Trading value |
+| marketCap | number | Market capitalization |
+| status | string | Source-provided quote status |
+| sector, industry, exchange | string | Source-provided metadata |
+| lastUpdated | string | Source-provided update timestamp |
 
-Ví dụ JavaScript (trình duyệt):
-```js
-const es = new EventSource("/stellar-api/v1/heatmap/stream");
+### GET /heatmap/stream
 
-es.addEventListener("ping", (e) => {
-  // e.data có thể là một JSON: { ts: "2026-07-04T19:00:00Z" }
-  // dùng để cập nhật trạng thái kết nối
+Opens a text/event-stream connection. The server emits an initial ping event, then a ping every 20 seconds. Quote updates arrive as quote events. A connection has a fixed 30-minute server-side timeout.
+
+For command-line clients, use the bearer header:
+
+~~~bash
+curl -N -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/stellar-api/v1/heatmap/stream
+~~~
+
+For a browser EventSource, use the supported query-token fallback:
+
+~~~javascript
+const token = "<JWT_TOKEN>";
+const stream = new EventSource(
+  "/stellar-api/v1/heatmap/stream?token=" + encodeURIComponent(token)
+);
+
+stream.addEventListener("quote", (event) => {
+  const quote = JSON.parse(event.data);
+  // Merge this individual symbol into the current heatmap state.
 });
 
-es.addEventListener("quote", (e) => {
-  // quote có thể là chuỗi JSON hoặc object JSON
-  try {
-    const payload = JSON.parse(e.data); // { symbol, price, pctChange, ... }
-    // TODO: cập nhật UI heatmap từ payload
-  } catch {
-    // nếu server gửi string JSON thô
-    // hãy parse như trên; nếu là object đã serialize sẵn thì dùng trực tiếp
-  }
+stream.addEventListener("ping", (event) => {
+  // Heartbeat data contains a timestamp.
 });
 
-es.onerror = () => {
-  // Trình duyệt sẽ tự reconnect theo EventSource
+stream.onerror = () => {
+  // EventSource retries automatically. Refresh the snapshot after a long disconnect.
 };
-```
+~~~
 
-Ví dụ theo dõi bằng curl:
-```bash
-curl -N "http://localhost:8080/stellar-api/v1/heatmap/stream"
-```
+Recommended client flow:
 
-Mẫu bản tin:
-- ping
-```
-event: ping
-data: {"ts":"2026-07-04T19:00:00Z"}
-```
+1. Load /heatmap/snapshot to establish the full current state.
+2. Open the stream.
+3. Merge each quote event by symbol.
+4. Reload the snapshot after a long disconnect or when re-establishing state.
 
-- quote (ví dụ)
-```
-event: quote
-data: {"symbol":"FPT","price":123400,"pctChange":1.15,"volume":1000000}
-```
+The SSE stream is a change feed, not a replayable source of truth. Close the EventSource when the screen is no longer active.
 
-Ghi chú:
-- Khi mất mạng/kết nối, server có thể loại bỏ emitter và client sẽ tự reconnect.
-- Hãy hiển thị dữ liệu từ snapshot trước, sau đó hợp nhất các bản tin quote để cập nhật theo thời gian thực.
-- Backend sử dụng Redis làm nguồn dữ liệu và gửi heartbeat mỗi ~20 giây để giữ kết nối hoạt động.
+### GET /market/breadth
 
----
+Returns the current Redis-backed market breadth object, or 204 if no object exists for the current Asia/Ho_Chi_Minh date.
 
-## Market Breadth APIs
+~~~bash
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/stellar-api/v1/market/breadth
+~~~
 
-### GET /stellar-api/v1/market/breadth
-Returns current market breadth from Redis.
+When the source is a map, the service adds advancePct, declinePct, and unchangedPct. The remaining fields are source-defined.
 
-### GET /stellar-api/v1/market/breadth/history
-Returns market breadth history for a date.
+### GET /market/breadth/history
 
-**Parameters:**
-- `date` *(optional)*: date key, usually `YYYYMMDD`; defaults to today for history if omitted.
+Returns a historical Redis-backed breadth object or list. The optional date selects the Redis date key; omit it to use the current Asia/Ho_Chi_Minh date.
 
-**Typical response fields:**
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| date | No | Expected date-key value, normally YYYYMMDD; it is not format-validated |
 
-| Field | Meaning | Chart usage |
-|-------|---------|-------------|
-| `streamId` | Redis Stream entry id, only present for history stream rows. | Stable point id / ordering fallback. |
-| `timestamp` | Sample timestamp from upstream stream row. | **Required** for history X-axis when present. |
-| `advance` / `advances` | Number of advancing stocks. | **Required** for breadth stacked bar/donut. |
-| `decline` / `declines` | Number of declining stocks. | **Required** for breadth stacked bar/donut. |
-| `unchanged` / `noChange` / `no_change` | Number of unchanged stocks. | **Required** for neutral segment. |
-| `total` / `totalStocks` / `total_stocks` | Total counted stocks. | Denominator for percentages. |
-| `advancePct` | Advancing percentage, added by backend for history map responses. | **Required** for percentage breadth chart. |
-| `declinePct` | Declining percentage, added by backend for history map responses. | **Required** for percentage breadth chart. |
-| `unchangedPct` | Unchanged percentage, added by backend for history map responses. | Neutral percentage segment. |
-| Other Redis fields | Extra breadth dimensions from upstream feed. | Optional tooltip/context. |
+The service preserves the source Redis object shape and enriches map records with advancePct, declinePct, and unchangedPct. It returns 204 when no object exists.
 
-Important breadth fields: `advance`, `decline`, `unchanged`, `total`, `advancePct`, `declinePct`.
+## Stock anomalies
 
-**Status Codes:** `200 OK` | `204 No Content`
+### GET /stock-anomalies
 
----
+Returns anomaly records for a prediction date. Without date, it uses the latest available prediction date.
 
-## Anomaly APIs
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| date | No | ISO date in YYYY-MM-DD |
 
-### GET /stellar-api/v1/stock-anomalies
-Returns stock anomaly scores from `stellar_dm.stock_anomalies`. If `date` is omitted, the backend uses the latest `predictionDate`.
+~~~bash
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  "http://localhost:8080/stellar-api/v1/stock-anomalies?date=2026-07-04"
+~~~
 
-**Parameters:**
-- `date` *(optional)*: prediction date in `YYYY-MM-DD`.
-
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/stock-anomalies?date=2026-07-10"
-```
-
-**Response (200):**
-```json
+~~~json
 [
   {
-    "id": 1,
-    "symbol": "HPG",
-    "sectorGroup": "STEEL",
-    "groupName": "Steel",
-    "predictionDate": "2026-07-10",
-    "score": 0.91,
-    "p95": 0.72,
-    "p98": 0.84,
-    "scoreOverP95": 1.26,
-    "scoreOverP98": 1.08,
-    "baselineScore": 0.41,
-    "baselineWindows": 60,
-    "scoreRatioVsBaseline": 2.21,
+    "id": 42,
+    "symbol": "FPT",
+    "sectorGroup": "TECHNOLOGY",
+    "groupName": "Technology",
+    "predictionDate": "2026-07-04",
+    "score": 0.88,
+    "p95": 0.70,
+    "p98": 0.82,
+    "scoreOverP95": 0.18,
+    "scoreOverP98": 0.06,
+    "baselineScore": 0.43,
+    "baselineWindows": 20,
+    "scoreRatioVsBaseline": 2.05,
     "anomalyCode": 2,
     "anomalyLevel": "HIGH",
-    "relativeLevel": "ABOVE_BASELINE",
-    "finalDecision": "ANOMALY"
+    "relativeLevel": "ABOVE_P98",
+    "finalDecision": "ALERT"
   }
 ]
-```
+~~~
 
-**Response fields and usage:**
+## Stock OHLCV and weights
 
-| Field | Meaning | UI/chart usage |
-|-------|---------|----------------|
-| `id` | Row id in anomaly table. | Stable row key. |
-| `symbol` | Stock symbol. | **Required** for table row and drill-down. |
-| `sectorGroup` | Sector/group code. | Filter/grouping. |
-| `groupName` | Human-readable group name. | Filter label/tooltip. |
-| `predictionDate` | Date the anomaly score applies to. | **Required** for timeline/table sorting. |
-| `score` | Current anomaly score. | **Required** for severity score chart. |
-| `p95` | 95th percentile threshold. | Threshold line/reference. |
-| `p98` | 98th percentile threshold. | High-severity threshold line/reference. |
-| `scoreOverP95` | Score divided by p95 threshold. | Relative severity tooltip/sort. |
-| `scoreOverP98` | Score divided by p98 threshold. | Extreme severity tooltip/sort. |
-| `baselineScore` | Historical baseline score. | Baseline comparison. |
-| `baselineWindows` | Number of windows used for baseline. | Data quality/context. |
-| `scoreRatioVsBaseline` | Score divided by baseline. | **Recommended** for relative anomaly ranking. |
-| `anomalyCode` | Numeric anomaly code. | Programmatic classification. |
-| `anomalyLevel` | Severity label. | Badge/color. |
-| `relativeLevel` | Level relative to baseline/threshold. | Badge/filter. |
-| `finalDecision` | Final anomaly decision. | **Required** for highlight/filter. |
+### GET /ohlcv/{symbol}
 
-Important stock anomaly fields: `symbol`, `predictionDate`, `score`, `anomalyLevel`, `finalDecision`, `scoreRatioVsBaseline`.
+Returns OHLCV history for a symbol. The symbol is normalized to uppercase. Results are ordered by dateSk and timeSk; use order=desc to reverse the result.
 
-**Status Codes:** `200 OK`
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| timeframe | No | Stored timeframe; default 1d |
+| fromDateSk | No | Inclusive start date in YYYYMMDD |
+| toDateSk | No | Inclusive end date in YYYYMMDD |
+| limit | No | Default 500, maximum 5000 |
+| order | No | asc or desc; default asc |
 
----
+~~~bash
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  "http://localhost:8080/stellar-api/v1/ohlcv/FPT?timeframe=1d&fromDateSk=20260701&order=asc"
+~~~
 
-## OHLCV APIs
+### GET /ohlcv
 
-### GET /stellar-api/v1/ohlcv/{symbol}
-Returns historical OHLCV rows for one symbol. This endpoint is intended for candlestick charts, volume charts, and daily price charts. Current data is EOD/daily with `timeframe=1d`, while the `timeframe` parameter is kept for future expansion.
+Returns the market snapshot for one date, sorted by marketCap descending.
 
-**Parameters:**
-- `timeframe` *(optional)*: defaults to `1d`
-- `fromDateSk` *(optional)*: inclusive start date in `YYYYMMDD`
-- `toDateSk` *(optional)*: inclusive end date in `YYYYMMDD`
-- `limit` *(optional)*: defaults to `500`, max `5000`
-- `order` *(optional)*: defaults to `asc`; accepted values: `asc`, `desc`
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| dateSk | Yes | Snapshot date in YYYYMMDD |
+| timeframe | No | Stored timeframe; default 1d |
+| limit | No | Default 199, maximum 1000 |
 
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/ohlcv/FPT?timeframe=1d&limit=500"
-```
+### GET /ohlcv/latest
 
-**Response (200):**
-```json
-[
-  {
-    "symbol": "FPT",
-    "symbolSk": 123,
-    "dateSk": 20260704,
-    "fullDate": "2026-07-04",
-    "timeframe": "1D",
-    "timeSk": 0,
-    "open": 121000,
-    "high": 124000,
-    "low": 120500,
-    "close": 123400,
-    "volume": 1000000,
-    "value": 123400000000,
-    "marketCap": 150000000000000,
-    "marketWeight": 0.025
-  }
-]
-```
+Uses the latest available date for the selected timeframe and returns a market snapshot sorted by marketCap descending.
 
-**Response fields and chart usage:**
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| timeframe | No | Stored timeframe; default 1d |
+| limit | No | Default 199, maximum 1000 |
 
-| Field | Meaning | Chart usage |
-|-------|---------|-------------|
-| `symbol` | Mã cổ phiếu. | Series label and route key. |
-| `symbolSk` | Surrogate key của symbol trong data mart. | Internal id/drill-down. |
-| `dateSk` | Ngày dạng `YYYYMMDD`. | **Required** for X-axis if not using `fullDate`. |
-| `fullDate` | Ngày ISO `YYYY-MM-DD`. | **Required** for X-axis in UI. |
-| `timeframe` | Khung thời gian, hiện tại dữ liệu EOD dùng `1d`. | Context/filter label. |
-| `timeSk` | Khóa thời gian trong ngày; EOD thường là `0`. | Intraday extension/context. |
-| `open` | Giá mở cửa. | **Required** for candlestick/OHLC chart. |
-| `high` | Giá cao nhất. | **Required** for candlestick/OHLC chart. |
-| `low` | Giá thấp nhất. | **Required** for candlestick/OHLC chart. |
-| `close` | Giá đóng cửa. | **Required** for candlestick/line chart and return calculation. |
-| `volume` | Khối lượng giao dịch. | **Required** for volume histogram. |
-| `value` | Giá trị giao dịch. | Liquidity tooltip/table. |
-| `marketCap` | Vốn hóa. | Market heatmap tile size / ranking. |
-| `marketWeight` | Tỷ trọng thị trường. | Market heatmap weighting / ranking. |
+All three OHLCV endpoints return objects with these fields:
 
-Important OHLCV chart fields: `fullDate` or `dateSk`, `open`, `high`, `low`, `close`, `volume`.
-
-**Status Codes:** `200 OK` | `400 Bad Request`
-
----
-
-### GET /stellar-api/v1/ohlcv
-Returns OHLCV rows for all symbols on one date. This endpoint supports market overview, heatmap fallback from database, and EOD price tables.
-
-**Parameters:**
-- `dateSk` *(required)*: date in `YYYYMMDD`
-- `timeframe` *(optional)*: defaults to `1d`
-- `limit` *(optional)*: defaults to `199`, max `1000`
-
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/ohlcv?dateSk=20260704&timeframe=1d&limit=199"
-```
-
-**Status Codes:** `200 OK` | `400 Bad Request`
-
-Response schema is the same as `GET /stellar-api/v1/ohlcv/{symbol}`. For market overview/heatmap, prioritize `symbol`, `close`, `volume`, `value`, `marketCap`, `marketWeight`.
-
----
-
-### GET /stellar-api/v1/ohlcv/latest
-Returns OHLCV rows for all symbols on the latest available `date_sk` for the requested timeframe. The frontend does not need to know the latest trading date.
-
-**Parameters:**
-- `timeframe` *(optional)*: defaults to `1d`
-- `limit` *(optional)*: defaults to `199`, max `1000`
-
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/ohlcv/latest?timeframe=1d&limit=199"
-```
-
-**Status Codes:** `200 OK`
-
-Response schema is the same as `GET /stellar-api/v1/ohlcv/{symbol}`. Use this endpoint when the frontend needs the latest available trading date automatically.
-
----
-
-### GET /stellar-api/v1/stocks/weights
-Returns pre-calculated stock weight rows from `stellar_dm.stock_ohlcv` with symbol metadata from `stellar_dm.dim_symbol`. If `dateSk` is omitted, the backend uses the latest available `date_sk` for the requested timeframe.
-
-This endpoint is designed for frontend stock weight tables, ranking cards, and heatmap-style views.
-
-**Parameters:**
-- `symbol` *(optional)*: filter by ticker symbol, for example `FPT`
-- `sector` *(optional)*: filter by sector code, for example `BANKS`
-- `dateSk` *(optional)*: exact date in `YYYYMMDD`
-- `fromDateSk` *(optional)*: inclusive start date in `YYYYMMDD`
-- `toDateSk` *(optional)*: inclusive end date in `YYYYMMDD`
-- `timeframe` *(optional)*: defaults to `1d`
-- `limit` *(optional)*: defaults to `1000`, max `5000`
-
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/stocks/weights?sector=BANKS&dateSk=20260704&limit=1000"
-```
-
-**Response (200):**
-```json
-[
-  {
-    "symbol": "VCB",
-    "symbolSk": 101,
-    "companyName": "Ngân hàng TMCP Ngoại thương Việt Nam",
-    "sector": "BANKS",
-    "dateSk": 20260704,
-    "fullDate": "2026-07-04",
-    "timeframe": "1d",
-    "timeSk": 0,
-    "close": 98000.0,
-    "volume": 1234567,
-    "value": 120987654321,
-    "marketCap": 451234567890123,
-    "marketWeight": 0.0312
-  }
-]
-```
-
-**Response fields and usage:**
-
-| Field | Meaning | Usage |
-|-------|---------|-------|
-| `symbol` | Ticker symbol. | Table row key, routing, filter chips. |
-| `symbolSk` | Surrogate key of the symbol. | Internal drill-down key. |
-| `companyName` | Company name from `dim_symbol`. | Display label in tables and tooltips. |
-| `sector` | Sector code from `dim_symbol`. | Grouping and sector filter. |
-| `dateSk` | Date key in `YYYYMMDD`. | Snapshot date and X-axis context. |
-| `fullDate` | ISO date `YYYY-MM-DD`. | UI display and chart axis. |
-| `timeframe` | Data timeframe, usually `1d`. | Context label. |
-| `timeSk` | Time key, EOD usually `0`. | Intraday extension/context. |
-| `close` | Closing price. | Price context / tooltip. |
-| `volume` | Traded volume. | Liquidity context. |
-| `value` | Traded value. | Liquidity context / ranking. |
-| `marketCap` | Market capitalisation. | Size / ranking fallback. |
-| `marketWeight` | Pre-calculated stock weight. | Main value for ranking and visual sizing. |
-
-Important stock weight fields: `symbol`, `marketWeight`, `marketCap`, `sector`, `fullDate`.
-
----
-
-## Index Valuation APIs
-
-The index valuation APIs read the pre-calculated `stellar_dm.fact_index_valuation_daily` fact table. Internal surrogate keys are resolved through `dim_symbol` and `dim_date`; responses expose only the frontend-ready `symbol` and ISO-8601 `date` values.
-
-### GET /stellar-api/v1/index-valuation/{symbol}/historical
-
-Returns historical valuation points for one index, ordered by `date` ascending for direct chart ingestion.
-
-**Path parameter:**
-- `symbol` *(required)*: index ticker, for example `VNINDEX` or `VN30`. Matching is case-insensitive.
-
-**Query parameters:**
-- `start_date` *(optional)*: inclusive ISO date in `YYYY-MM-DD` format.
-- `end_date` *(optional)*: inclusive ISO date in `YYYY-MM-DD` format.
-
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/index-valuation/VNINDEX/historical?start_date=2026-01-01&end_date=2026-07-21"
-```
-
-**Response (200):**
-```json
-[
-  {
-    "symbol": "VNINDEX",
-    "date": "2026-07-20",
-    "indexClose": 1280.52,
-    "pe": 13.42,
-    "pb": 1.68
-  },
-  {
-    "symbol": "VNINDEX",
-    "date": "2026-07-21",
-    "indexClose": 1285.10,
-    "pe": 13.47,
-    "pb": 1.69
-  }
-]
-```
-
-Returns an empty array when the index has no valuation data in the requested period. `400 Bad Request` is returned when `start_date` is later than `end_date` or a date is not formatted as `YYYY-MM-DD`.
-
-### GET /stellar-api/v1/index-valuation/{symbol}/latest
-
-Returns the most recent valuation point available for one index.
-
-**Path parameter:**
-- `symbol` *(required)*: index ticker, for example `VNINDEX` or `VN30`. Matching is case-insensitive.
-
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/index-valuation/VN30/latest"
-```
-
-**Response (200):**
-```json
+~~~json
 {
-  "symbol": "VN30",
-  "date": "2026-07-21",
-  "indexClose": 1392.25,
-  "pe": 12.08,
-  "pb": 1.51
+  "symbol": "FPT",
+  "symbolSk": 76,
+  "dateSk": 20260704,
+  "fullDate": "2026-07-04",
+  "timeframe": "1d",
+  "timeSk": 0,
+  "open": 122000,
+  "high": 124000,
+  "low": 121500,
+  "close": 123400,
+  "volume": 15963512,
+  "value": 1960000000000,
+  "marketCap": 210000000000000,
+  "marketWeight": 0.031
 }
-```
+~~~
 
-Returns `204 No Content` when no valuation data is available for the symbol.
+### GET /stocks/weights
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `symbol` | string | Human-readable index ticker. |
-| `date` | string | Trading date in ISO `YYYY-MM-DD` format. |
-| `indexClose` | number | Index close price for the trading day. |
-| `pe` | number | Price-to-earnings ratio. |
-| `pb` | number | Price-to-book ratio. |
+Returns stock market-weight data from the stock OHLCV table.
 
----
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| symbol | No | Ticker filter, normalized to uppercase |
+| sector | No | Sector filter, normalized to uppercase |
+| dateSk | No | Snapshot date in YYYYMMDD |
+| fromDateSk | No | Inclusive range start in YYYYMMDD |
+| toDateSk | No | Inclusive range end in YYYYMMDD |
+| timeframe | No | Stored timeframe; default 1d |
+| limit | No | Default 1000, maximum 5000 |
 
-## Index OHLCV APIs
+When dateSk is absent and either range parameter is supplied, the request is a range query. When dateSk is present, it takes precedence and the range is ignored. Without dateSk or a range, the service uses the latest available date. A range whose start is later than its end returns 400.
 
-### GET /stellar-api/v1/index-ohlcv/{symbol}
-Returns historical OHLCV rows for one index symbol, for example `VNINDEX`, `HNXINDEX`, or `UPCOMINDEX`.
+Snapshot results are sorted by marketWeight descending, then symbol ascending. Range results are sorted by dateSk descending, then marketWeight descending and symbol ascending.
 
-**Parameters:**
-- `timeframe` *(optional)*: defaults to `1d`
-- `fromDateSk` *(optional)*: inclusive start date in `YYYYMMDD`
-- `toDateSk` *(optional)*: inclusive end date in `YYYYMMDD`
-- `limit` *(optional)*: defaults to `500`, max `5000`
-- `order` *(optional)*: defaults to `asc`; accepted values: `asc`, `desc`
+The endpoint returns 200 (including an empty array) or 400 when fromDateSk is later than toDateSk.
 
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/index-ohlcv/VNINDEX?timeframe=1d&limit=500"
-```
+~~~json
+{
+  "symbol": "FPT",
+  "symbolSk": 76,
+  "companyName": "FPT Corporation",
+  "sector": "TECHNOLOGY",
+  "dateSk": 20260704,
+  "fullDate": "2026-07-04",
+  "timeframe": "1d",
+  "timeSk": 0,
+  "close": 123400,
+  "volume": 15963512,
+  "value": 1960000000000,
+  "marketCap": 210000000000000,
+  "marketWeight": 0.031
+}
+~~~
 
-**Response (200):**
-```json
+## Index data
+
+### GET /index-impact/{indexCode}/latest
+
+Returns the latest index-impact calculation stored in the Redis JSON key index:impact:{indexCode}:latest. The path indexCode is normalized to uppercase and accepts letters, digits, dots, underscores, and hyphens.
+
+Returns 200 when a snapshot exists, 204 when the key is absent or blank, and 400 for an invalid indexCode.
+
+~~~bash
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  http://localhost:8080/stellar-api/v1/index-impact/VN30/latest
+~~~
+
+~~~json
+{
+  "index_code": "VN30",
+  "timestamp": "2026-08-08T09:30:00+07:00",
+  "index_value": 1450.5,
+  "valid_count": 28,
+  "missing_count": 2,
+  "missing_symbols": ["ABC", "XYZ"],
+  "missing_reasons": {
+    "ABC": "missing quote",
+    "XYZ": "stale price"
+  },
+  "total_adjusted_cap": 123456.78,
+  "total_impact_point": 4.2,
+  "top_positive": [
+    {"symbol": "FPT", "impact_point": 1.2, "weight": 0.08, "pct_change": 1.5}
+  ],
+  "top_negative": [
+    {"symbol": "VIC", "impact_point": -0.8, "weight": 0.06, "pct_change": -1.1}
+  ],
+  "items": [
+    {
+      "symbol": "FPT",
+      "price": 123400,
+      "pct_change": 1.5,
+      "freefloat": 0.85,
+      "capping_factor": 1.0,
+      "adjusted_cap": 1000.0,
+      "weight": 0.08,
+      "impact_point": 1.2,
+      "last_updated": "2026-08-08T09:30:00+07:00"
+    }
+  ]
+}
+~~~
+
+index_value and total_impact_point may be null. Any absent collection in the cache is returned as an empty array or object so consumers can safely iterate missing_symbols, missing_reasons, top_positive, top_negative, and items.
+
+### GET /index-impact/{indexCode}/history
+
+Returns the index-impact timeline from the Redis Stream index:impact:{indexCode}:history:{date}. The endpoint reads up to 1,000 stream records in their natural stream order and parses string-valued numeric fields and the nested top_positive_json and top_negative_json fields.
+
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| date | No | Redis date suffix, normally YYYYMMDD; defaults to the current Asia/Ho_Chi_Minh date |
+
+The endpoint returns 200 with an array, including an empty array when the stream has no records. Invalid indexCode values return 400.
+
+~~~bash
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  "http://localhost:8080/stellar-api/v1/index-impact/VN30/history?date=20260808"
+~~~
+
+~~~json
 [
   {
-    "symbol": "VNINDEX",
-    "symbolSk": 180,
-    "dateSk": 20260704,
-    "fullDate": "2026-07-04",
-    "timeframe": "1d",
-    "timeSk": 0,
-    "open": 1280.5,
-    "high": 1294.2,
-    "low": 1278.1,
-    "close": 1290.4,
-    "volume": 123456789,
-    "value": 4567890000000
+    "timestamp": "2026-08-08T09:30:00+07:00",
+    "index_code": "VN30",
+    "index_value": 1450.5,
+    "valid_count": 28,
+    "missing_count": 2,
+    "total_adjusted_cap": 123456.78,
+    "total_impact_point": 4.2,
+    "top_positive": [
+      {"symbol": "FPT", "impact_point": 1.2, "weight": 0.08, "pct_change": 1.5}
+    ],
+    "top_negative": [
+      {"symbol": "VIC", "impact_point": -0.8, "weight": 0.06, "pct_change": -1.1}
+    ]
   }
 ]
-```
+~~~
 
-**Response fields and chart usage:**
+### GET /index-valuation/{symbol}/historical
 
-| Field | Meaning | Chart usage |
-|-------|---------|-------------|
-| `symbol` | Index code. | Series label and query key. |
-| `symbolSk` | Surrogate key of the index symbol in data mart. | Internal id/drill-down. |
-| `dateSk` | Date key in `YYYYMMDD`. | **Required** for X-axis if not using `fullDate`. |
-| `fullDate` | ISO date `YYYY-MM-DD`. | **Required** for X-axis in UI. |
-| `timeframe` | Data timeframe, currently usually `1d`. | Context/filter label. |
-| `timeSk` | Time key; EOD usually uses `0`. | Intraday extension/context. |
-| `open` | Opening index value. | **Required** for candlestick/OHLC chart. |
-| `high` | Highest index value. | **Required** for candlestick/OHLC chart. |
-| `low` | Lowest index value. | **Required** for candlestick/OHLC chart. |
-| `close` | Closing index value. | **Required** for candlestick/line chart and return calculation. |
-| `volume` | Matched volume for the index universe if available. | Volume histogram / tooltip. |
-| `value` | Trading value for the index universe if available. | Liquidity chart / tooltip. |
+Returns index close, P/E, and P/B rows ordered by date ascending. The symbol is normalized to uppercase.
 
-Important index chart fields: `fullDate` or `dateSk`, `open`, `high`, `low`, `close`, `volume`, `value`.
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| start_date | No | Inclusive ISO date in YYYY-MM-DD |
+| end_date | No | Inclusive ISO date in YYYY-MM-DD |
 
-**Status Codes:** `200 OK` | `400 Bad Request`
+start_date must not be after end_date. The endpoint returns 200 or 400.
 
----
+~~~bash
+curl -H "Authorization: Bearer <JWT_TOKEN>" \
+  "http://localhost:8080/stellar-api/v1/index-valuation/VNINDEX/historical?start_date=2026-01-01&end_date=2026-07-04"
+~~~
 
-### GET /stellar-api/v1/index-ohlcv
-Returns index OHLCV rows for all index symbols on one date.
+### GET /index-valuation/{symbol}/latest
 
-**Parameters:**
-- `dateSk` *(required)*: date in `YYYYMMDD`
-- `timeframe` *(optional)*: defaults to `1d`
-- `limit` *(optional)*: defaults to `100`, max `1000`
+Returns the most recent valuation row, or 204 when no row exists for the symbol. It returns 200, 204, or 400.
 
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/index-ohlcv?dateSk=20260704&timeframe=1d&limit=100"
-```
+~~~json
+{
+  "symbol": "VNINDEX",
+  "date": "2026-07-04",
+  "indexClose": 1280.5,
+  "pe": 13.2,
+  "pb": 1.7
+}
+~~~
 
-**Status Codes:** `200 OK` | `400 Bad Request`
+### GET /index-ohlcv/{symbol}
 
-Response schema is the same as `GET /stellar-api/v1/index-ohlcv/{symbol}`. For index overview charts, prioritize `symbol`, `close`, `volume`, and `value`.
+Returns index OHLCV history for one symbol. The symbol is normalized to uppercase.
 
----
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| timeframe | No | Stored timeframe; default 1d |
+| fromDateSk | No | Inclusive start date in YYYYMMDD |
+| toDateSk | No | Inclusive end date in YYYYMMDD |
+| limit | No | Default 500, maximum 5000 |
+| order | No | asc or desc; default asc |
 
-### GET /stellar-api/v1/index-ohlcv/latest
-Returns index OHLCV rows for all index symbols on the latest available `date_sk` for the requested timeframe.
+### GET /index-ohlcv
 
-**Parameters:**
-- `timeframe` *(optional)*: defaults to `1d`
-- `limit` *(optional)*: defaults to `100`, max `1000`
+Returns index OHLCV rows for one date.
 
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/index-ohlcv/latest?timeframe=1d&limit=100"
-```
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| dateSk | Yes | Snapshot date in YYYYMMDD |
+| timeframe | No | Stored timeframe; default 1d |
+| limit | No | Default 100, maximum 1000 |
 
-**Status Codes:** `200 OK`
+### GET /index-ohlcv/latest
 
-Response schema is the same as `GET /stellar-api/v1/index-ohlcv/{symbol}`.
+Uses the latest available date for the selected timeframe.
 
----
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| timeframe | No | Stored timeframe; default 1d |
+| limit | No | Default 100, maximum 1000 |
 
-### GET /stellar-api/v1/symbols
-Returns minimal symbol metadata for frontend symbol selectors. This API only uses `symbol_id`, `symbol`, `is_active`, `is_current`, `shares_outstanding`, and `freefloat` from `stellar_dm.dim_symbol`.
+Index OHLCV objects use the same core candle fields as stock OHLCV but do not include marketCap or marketWeight:
 
-**Parameters:**
-- `activeOnly` *(optional)*: defaults to `true`
-- `limit` *(optional)*: defaults to `500`, max `2000`
+~~~json
+{
+  "symbol": "VNINDEX",
+  "symbolSk": 1,
+  "dateSk": 20260704,
+  "fullDate": "2026-07-04",
+  "timeframe": "1d",
+  "timeSk": 0,
+  "open": 1274.2,
+  "high": 1284.1,
+  "low": 1270.5,
+  "close": 1280.5,
+  "volume": 812345678,
+  "value": 21400000000000
+}
+~~~
 
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/symbols?activeOnly=true&limit=500"
-```
+## Symbols
 
-**Response (200):**
-```json
+### GET /symbols
+
+Returns symbol metadata ordered by symbol.
+
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| activeOnly | No | true by default; false includes inactive or non-current records |
+| limit | No | Default 500, maximum 2000 |
+
+~~~json
 [
   {
-    "symbolSk": 123,
+    "symbolSk": 76,
     "symbol": "FPT",
     "isActive": true,
-    "sharesOutstanding": 1500000000,
+    "sharesOutstanding": 1470000000,
     "freefloat": 0.85
   }
 ]
-```
+~~~
 
-**Response fields and usage:**
+### GET /symbols/available
 
-| Field | Meaning | Usage |
-|-------|---------|-------|
-| `symbolSk` | Surrogate key của symbol trong data mart. | Internal id/drill-down. |
-| `symbol` | Mã cổ phiếu. | **Required** for selectors, routing, chart query key. |
-| `isActive` | Symbol còn active hay không. | Filter inactive symbols. |
-| `sharesOutstanding` | Số cổ phiếu lưu hành. | Market-cap fallback / fundamentals tooltip. |
-| `freefloat` | Tỷ lệ free-float. | Liquidity/freefloat weighting if needed. |
+Returns an alphabetically ordered array of symbols that have stock OHLCV rows:
 
-Important selector fields: `symbol`, `symbolSk`, `isActive`.
+~~~json
+["FPT", "HPG", "VIX"]
+~~~
 
-**Status Codes:** `200 OK`
+## Sector and market analytics
 
----
+### GET /market-structure
 
-### GET /stellar-api/v1/symbols/available
-Returns stock symbols that have rows in `stellar_dm.stock_ohlcv`. This is the lightweight option for chart search/autocomplete when the frontend only needs tradable symbols with OHLCV data.
+Returns the latest market-structure cache row for a valid timeframe and benchmark.
 
-**Example:**
-```bash
-curl "http://localhost:8080/stellar-api/v1/symbols/available"
-```
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| timeframe | Yes | One of 1M, 3M, 6M, or 1Y; case-insensitive |
+| benchmark | No | Benchmark name; defaults to VNINDEX |
 
-**Response (200):**
-```json
-[
-  "FPT",
-  "HPG",
-  "VCB"
-]
-```
+Returns 204 when no matching cache row exists.
 
-**Response usage:**
-- Each item is a symbol string.
-- Use for chart symbol selector/autocomplete.
-- Use `/stellar-api/v1/symbols` instead when metadata such as `symbolSk`, `sharesOutstanding`, or `freefloat` is needed.
-
-**Status Codes:** `200 OK`
-
----
-
-### GET /stellar-api/v1/market-structure
-Latest market structure snapshot by timeframe.
-
-**Parameters:**
-- `timeframe` *(required)*: `1M`, `3M`, `6M`, `1Y`
-- `benchmark` *(optional)*: defaults to `VNINDEX`
-
-**Response (200):**
-```json
+~~~json
 {
-  "dateSk": 20260423,
-  "timeframe": "3M",
+  "dateSk": 20260704,
+  "timeframe": "1M",
   "benchmark": "VNINDEX",
-  "marketStructureCode": "MIXED",
-  "marketStructureLabel": "Cấu trúc Phân Hóa (Mixed)",
-  "coreSectors": [
-    {
-      "block_type": "KHỐI VẬN TẢI",
-      "appearances": 58,
-      "sector_code": "SHIPPING",
-      "sector_name": "Vận tải biển/cảng",
-      "avg_strength": 1.5808,
-      "latest_strength": 1.0162
-    },
-    {
-      "block_type": "KHỐI CÔNG NGHIỆP, TÀI NGUYÊN",
-      "appearances": 57,
-      "sector_code": "FERTILIZER_CHEMICAL",
-      "sector_name": "Phân bón, hoá chất",
-      "avg_strength": 2.0337,
-      "latest_strength": 0.9757
-    }
-  ],
-  "coreBlocks": [
-    "KHỐI CÔNG NGHIỆP, TÀI NGUYÊN",
-    "KHỐI TÀI CHÍNH",
-    "KHỐI VẬN TẢI"
-  ],
-  "topEcosystemCode": "FPT_ECOSYSTEM",
-  "topEcosystemName": "FPT",
-  "sectorRankings": [
-    {
-      "block_type": "KHỐI VẬN TẢI",
-      "appearances": 58,
-      "sector_code": "SHIPPING",
-      "sector_name": "Vận tải biển/cảng",
-      "avg_strength": 1.5808,
-      "latest_strength": 1.0162
-    },
-    {
-      "block_type": "KHỐI CÔNG NGHIỆP, TÀI NGUYÊN",
-      "appearances": 57,
-      "sector_code": "FERTILIZER_CHEMICAL",
-      "sector_name": "Phân bón, hoá chất",
-      "avg_strength": 2.0337,
-      "latest_strength": 0.9757
-    }
-  ],
-  "ecosystemRankings": [
-    {
-      "block_type": null,
-      "appearances": 57,
-      "avg_strength": 2.0231,
-      "ecosystem_code": "FPT_ECOSYSTEM",
-      "ecosystem_name": "FPT",
-      "latest_strength": 0.7903
-    },
-    {
-      "block_type": null,
-      "appearances": 1,
-      "avg_strength": 1.1427,
-      "ecosystem_code": "VINGROUP",
-      "ecosystem_name": "Vingroup",
-      "latest_strength": 1.1427
-    }
-  ],
-  "ingestionTime": "2026-04-23T11:10:04.291543"
+  "marketStructureCode": "RISK_ON",
+  "marketStructureLabel": "Risk-on",
+  "coreSectors": ["BANKS", "TECHNOLOGY"],
+  "coreBlocks": ["FINANCIALS"],
+  "topEcosystemCode": "BANKING",
+  "topEcosystemName": "Banking",
+  "sectorRankings": [{"sectorCode": "BANKS", "rank": 1}],
+  "ecosystemRankings": [{"ecosystemCode": "BANKING", "rank": 1}],
+  "ingestionTime": "2026-07-04T17:30:00"
 }
-```
+~~~
 
-**Status Codes:** `200 OK` | `204 No Content` | `400 Bad Request`
+The coreSectors, coreBlocks, sectorRankings, and ecosystemRankings values are stored as JSON strings and emitted as raw JSON. Their nested schema is data-mart defined.
 
----
+### GET /rrg
 
-#### Response Fields
+Returns relative-rotation graph data grouped in an items wrapper.
 
-| Field | Type | Mô tả |
-|-------|------|-----------|
-| `dateSk` | integer | Khóa ngày định dạng YYYYMMDD |
-| `timeframe` | string | Khung thời gian: `1M`, `3M`, `6M`, `1Y` |
-| `benchmark` | string | Chỉ số chuẩn (ví dụ: VNINDEX) |
-| `marketStructureCode` | string | Mã xác định cấu trúc thị trường (ví dụ: MIXED, TREND) |
-| `marketStructureLabel` | string | Tên cấu trúc thị trường dễ đọc |
-| `coreSectors` | array | **Các ngành lõi** thúc đẩy thị trường - mảng các đối tượng ngành có chỉ số lực mạnh |
-| `coreBlocks` | array | **Các khối kinh doanh lõi** - mảng tên các loại khối |
-| `topEcosystemCode` | string | Mã của nhóm hệ sinh thái hàng đầu |
-| `topEcosystemName` | string | Tên của nhóm hệ sinh thái hàng đầu |
-| `sectorRankings` | array | **Tất cả ngành xếp hạng** - danh sách xếp hạng đầy đủ với chỉ số hiệu suất |
-| `ecosystemRankings` | array | **Tất cả hệ sinh thái xếp hạng** - xếp hạng đầy đủ các nhóm hệ sinh thái |
-| `ingestionTime` | string | Dấu thời gian ISO 8601 khi dữ liệu được nhập |
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| regime | Yes | One of VENTURE, FLEXIBLE, or ENDURING; case-insensitive |
+| benchmark | No | Defaults to VNINDEX |
+| dateSk | No | Specific date in YYYYMMDD; latest is used when omitted |
 
-**⭐ Các field BẮT BUỘC để hiển thị Cấu trúc Thị trường:**
-| Field | Mục đích | Ghi chú |
-|-------|---------|--------|
-| `marketStructureLabel` | Hiển thị **tiêu đề cấu trúc** | Ví dụ: "Cấu trúc Phân Hóa (Mixed)" |
-| `coreSectors` | Hiển thị **ngành lõi chính** | Dùng: `sector_name`, `latest_strength` |
-| `coreBlocks` | Hiển thị **các khối chiếm ưu thế** | Danh sách các khối kinh doanh |
-| `topEcosystemName` | Hiển thị **hệ sinh thái hàng đầu** | Tên công ty/tập đoàn lớn |
-| `sectorRankings` | Hiển thị **danh sách xếp hạng ngành** | Sắp xếp theo `latest_strength` giảm dần |
+Returns 204 when no items exist.
 
-**Chart/display priority:**
-- Market-structure summary card: `marketStructureCode`, `marketStructureLabel`, `dateSk`, `timeframe`, `benchmark`.
-- Core sector/block view: `coreSectors`, `coreBlocks`.
-- Ranking tables/charts: `sectorRankings`, `ecosystemRankings`.
-- Tooltip/context: `topEcosystemCode`, `topEcosystemName`, `ingestionTime`.
-
----
-
-### GET /stellar-api/v1/rrg
-Sector RRG items by regime.
-
-**Parameters:**
-- `regime` *(required)*: `VENTURE`, `FLEXIBLE`, `ENDURING`
-- `benchmark` *(optional)*: defaults to `VNINDEX`
-- `dateSk` *(optional)*: uses latest if omitted
-
-**Response (200):**
-```json
+~~~json
 {
   "items": [
     {
-      "sectorCode": "AGRICULTURE",
-      "dateSk": 20260423,
-      "rs": 79.15,
-      "rm": 98.68,
-      "phase": "LAGGING",
-      "stockCount": 8,
-      "totalStocks": 8,
-      "sectorName": "Nông Nghiệp",
-      "sectorNameEn": "Agriculture",
-      "blockType": "KHỐI BÁN LẺ/TIÊU DÙNG/XUẤT NHẬP KHẨU",
-      "topStocksByCap": {
-        "mid": [
-          {"rm": 102.6931, "rs": 89.1084, "symbol": "BAF"},
-          {"rm": 93.9914, "rs": 76.695, "symbol": "LTG"}
-        ],
-        "large": [
-          {"rm": 98.9663, "rs": 66.7556, "symbol": "HAG"}
-        ],
-        "small": [
-          {"rm": 110.4496, "rs": 108.2321, "symbol": "HNG"}
-        ]
-      },
-      "benchmark": "VNINDEX",
-      "ingestionTime": "2026-04-23T11:00:07.434856",
-      "regime": "FLEXIBLE"
-    },
-    {
       "sectorCode": "BANKS",
-      "dateSk": 20260423,
-      "rs": 74.39,
-      "rm": 97.29,
-      "phase": "LAGGING",
+      "dateSk": 20260704,
+      "rs": 104.2,
+      "rm": 102.8,
+      "phase": "LEADING",
       "stockCount": 16,
       "totalStocks": 16,
-      "sectorName": "Ngân hàng",
+      "sectorName": "Banks",
       "sectorNameEn": "Banks",
-      "blockType": "KHỐI TÀI CHÍNH",
+      "blockType": "FINANCIALS",
       "topStocksByCap": {
-        "mid": [
-          {"rm": 81.6364, "rs": 78.2593, "symbol": "HDB"},
-          {"rm": 108.709, "rs": 71.2577, "symbol": "STB"}
-        ],
-        "large": [
-          {"rm": 144.0374, "rs": 113.713, "symbol": "VCB"},
-          {"rm": 103.4329, "rs": 100.1779, "symbol": "TCB"}
-        ],
-        "small": [
-          {"rm": 106.4164, "rs": 78.6099, "symbol": "MSB"}
-        ]
+        "large": [{"symbol": "VCB", "rs": 110.3, "rm": 105.1}]
       },
       "benchmark": "VNINDEX",
-      "ingestionTime": "2026-04-23T11:00:07.434856",
+      "ingestionTime": "2026-07-04T17:30:00",
       "regime": "FLEXIBLE",
       "totalVolume": 123456789,
       "totalValue": 987654321000,
@@ -1009,234 +683,45 @@ Sector RRG items by regime.
     }
   ]
 }
-```
+~~~
 
-**Status Codes:** `200 OK` | `204 No Content` | `400 Bad Request`
+topStocksByCap is emitted as raw JSON; consumers should not assume a fixed set of capitalization bucket keys.
 
----
+### GET /sector-performance
 
-#### Response Fields
+Returns the latest sector-performance chart cache rows.
 
-| Field | Type | Mô tả |
-|-------|------|-----------|
-| `items` | array | **Mảng các mục RRG** |
-| `sectorCode` | string | Mã định danh duy nhất của ngành |
-| `sectorName` | string | Tên ngành bằng tiếng Việt |
-| `sectorNameEn` | string | Tên ngành bằng tiếng Anh |
-| `dateSk` | integer | Khóa ngày định dạng YYYYMMDD |
-| `rs` | number | **Relative Strength** - hiệu suất so với chỉ số (thang 0-100) |
-| `rm` | number | **Relative Momentum** - chỉ số động lực (thang 0-100) |
-| `phase` | string | Pha RRG: `LEADING`, `WEAKENING`, `LAGGING`, `IMPROVING` |
-| `blockType` | string | Loại khối/danh mục kinh doanh |
-| `stockCount` | integer | Số lượng cổ phiếu có dữ liệu trong ngành |
-| `totalStocks` | integer | Tổng số cổ phiếu trong ngành |
-| `topStocksByCap` | object | **Cổ phiếu theo vốn hóa** - nhóm theo `small` (nhỏ), `mid` (vừa), `large` (lớn) hoặc `leading` |
-| `- symbol` | string | Mã chứng chỉ cổ phiếu |
-| `- rs` | number | Relative Strength của cổ phiếu |
-| `- rm` | number | Relative Momentum của cổ phiếu |
-| `benchmark` | string | Chỉ số chuẩn được sử dụng |
-| `regime` | string | Chế độ thị trường: `VENTURE`, `FLEXIBLE`, `ENDURING` |
-| `ingestionTime` | string | Dấu thời gian ISO 8601 khi dữ liệu được nhập |
-| `totalVolume` | number | Tổng khối lượng giao dịch của sector; có thể dùng để filter/sort theo thanh khoản |
-| `totalValue` | number | Tổng giá trị giao dịch của sector; có thể dùng để filter/sort sector |
-| `totalMarketCap` | number | Tổng vốn hóa sector; có thể dùng để scale bubble size |
-| `avgMarketCap` | number | Vốn hóa trung bình trong sector; có thể dùng để filter nhóm sector theo quy mô |
-| `liquidityScore` | number | Điểm thanh khoản; có thể dùng để filter/sort sector |
-| `totalFreefloatMarketCap` | number | Tổng freefloat market cap; có thể dùng thay `totalMarketCap` khi muốn scale theo freefloat |
-| `avgMarketWeight` | number | Trọng số thị trường trung bình của sector |
+| Query parameter | Required | Description |
+| --- | --- | --- |
+| timeframe | Yes | One of 1M, 3M, 6M, or 1Y; case-insensitive |
+| sectorCode | No | Optional sector filter |
 
-**Ghi chú field mới:** `totalMarketCap` có thể dùng để scale bubble size. `liquidityScore`, `totalValue`, `totalVolume` có thể dùng để frontend filter hoặc sort sector. `totalFreefloatMarketCap` có thể dùng thay `totalMarketCap` khi muốn scale theo freefloat. Các field mới có thể `null` nếu cache chưa backfill đầy đủ.
+Returns 204 when no matching rows exist.
 
-**Giải thích Pha RRG:**
-- 🚀 **LEADING**: Hiệu suất mạnh mẽ, giai đoạn tăng trưởng
-- ⬆️ **IMPROVING**: Chuyển tiếp từ yếu sang mạnh
-- ⬇️ **WEAKENING**: Chuyển tiếp từ mạnh sang yếu
-- 📉 **LAGGING**: Hiệu suất yếu, giai đoạn suy giảm
-
-**⭐ Các field BẮT BUỘC để vẽ RRG Chart:**
-| Field | Mục đích | Ghi chú |
-|-------|---------|--------|
-| `rs` | Trục Y (Relative Strength) | Giá trị 0-100, vị trí dọc trên biểu đồ |
-| `rm` | Trục X (Relative Momentum) | Giá trị 0-100, vị trí ngang trên biểu đồ |
-| `sectorName` | Nhãn điểm | Hiển thị tên ngành khi hover |
-| `phase` | Màu điểm | LEADING (xanh), IMPROVING (vàng), WEAKENING (cam), LAGGING (đỏ) |
-| `blockType` | Phân loại | Dùng để nhóm hoặc lọc ngành |
-
-**Chart/display priority:**
-- RRG scatter position: `rm` as X-axis, `rs` as Y-axis.
-- Point color: `phase`.
-- Point label/tooltip: `sectorCode`, `sectorName`, `sectorNameEn`, `blockType`.
-- Bubble size or ranking: `totalMarketCap`, `totalFreefloatMarketCap`, `avgMarketWeight`, `liquidityScore`.
-- Drill-down tooltip: `topStocksByCap`, `stockCount`, `totalStocks`, `totalValue`, `totalVolume`.
-
----
-
-### GET /stellar-api/v1/sector-performance
-Latest sector performance by timeframe.
-
-**Parameters:**
-- `timeframe` *(required)*: `1M`, `3M`, `6M`, `1Y`
-- `sectorCode` *(optional)*: filter by sector
-
-**Response (200):**
-```json
+~~~json
 [
   {
-    "sectorCode": "AGRICULTURE",
-    "blockType": "KHỐI BÁN LẺ/TIÊU DÙNG/XUẤT NHẬP KHẨU",
-    "timeframe": "1M",
-    "chartData": [
-      {"date": 20260326, "value": 0.0},
-      {"date": 20260327, "value": -0.58},
-      {"date": 20260330, "value": 1.02},
-      {"date": 20260331, "value": 0.36},
-      {"date": 20260401, "value": -1.04}
-    ],
-    "ingestionTime": "2026-04-24T15:21:05.052485"
-  },
-  {
     "sectorCode": "BANKS",
-    "blockType": "KHỐI TÀI CHÍNH",
+    "blockType": "FINANCIALS",
     "timeframe": "1M",
     "chartData": [
-      {"date": 20260326, "value": 0.0},
-      {"date": 20260327, "value": -0.29},
-      {"date": 20260330, "value": -0.09},
-      {"date": 20260331, "value": 0.3},
-      {"date": 20260401, "value": -1.13}
+      {"date": 20260605, "value": 0.0},
+      {"date": 20260606, "value": 1.2}
     ],
-    "ingestionTime": "2026-04-24T15:21:05.052485"
+    "ingestionTime": "2026-07-04T17:30:00"
   }
 ]
-```
+~~~
 
-**Status Codes:** `200 OK` | `204 No Content` | `400 Bad Request`
+chartData is emitted as raw JSON from the data mart. The sample shows the expected chart-oriented array, but its nested schema is data-mart defined.
 
----
+## Status code summary
 
-#### Response Fields
+| Status | Meaning |
+| --- | --- |
+| 200 | Successful result, including valid empty arrays |
+| 204 | No current object or no matching analytics cache row for the endpoints that support it |
+| 400 | Invalid, missing, or unparsable request data |
+| 401 | Missing or invalid JWT for a protected Stellar endpoint |
 
-| Field | Type | Bắt buộc cho Biểu đồ | Mô tả |
-|-------|------|:-:|-----------|
-| `sectorCode` | string | ❌ | Mã định danh ngành (ví dụ: AGRICULTURE, BANKS, TECHNOLOGY) |
-| `blockType` | string | ❌ | Loại khối/danh mục kinh doanh (ví dụ: KHỐI TÀI CHÍNH, KHỐI CÔNG NGHỆ) |
-| `timeframe` | string | ❌ | Khung thời gian dữ liệu: `1M`, `3M`, `6M`, `1Y` |
-| `chartData` | array | ✅ **CÓ** | **Mảng dữ liệu biểu đồ** - BẮT BUỘC cho hiển thị biểu đồ |
-| `- date` | number | ✅ **CÓ** | Ngày định dạng YYYYMMDD (ví dụ: 20260326 = 26/03/2026) |
-| `- value` | number | ✅ **CÓ** | Giá trị hiệu suất (thay đổi theo phần trăm) |
-| `ingestionTime` | string | ❌ | Dấu thời gian ISO 8601 khi dữ liệu được nhập |
-
-**Yêu cầu vẽ biểu đồ:**
-- Chỉ cần mảng `chartData` - chứa các cặp ngày & giá trị
-- Tối thiểu 1 điểm dữ liệu, thường 20-21 điểm cho khung thời gian hàng tháng
-- Giá trị đầu tiên thường là 0.0 (điểm tham chiếu gốc)
-- Các giá trị tiếp theo biểu thị thay đổi hiệu suất phần trăm tích lũy
-- Phân tích trường `date` định dạng YYYYMMDD và chuyển thành ngày thực cho trục x
-
-**⭐ Các field BẮT BUỘC để vẽ Performance Chart:**
-| Field | Mục đích | Chi tiết |
-|-------|---------|---------|
-| `chartData[].date` | Trục X (Ngày) | Định dạng YYYYMMDD, chuyển đổi thành ngày D/M/Y |
-| `chartData[].value` | Trục Y (Giá trị) | Phần trăm thay đổi hiệu suất, có thể âm hoặc dương |
-| `sectorCode` | Nhãn biểu đồ | Hiển thị ở tiêu đề (ví dụ: "AGRICULTURE") |
-| `sectorName` (nếu có) | Tiêu đề đầy đủ | Tên ngành tiếng Việt nếu API trả về |
-| `blockType` | Phân loại màu | Dùng để phân biệt các nhóm ngành |
-| `timeframe` | Khoảng thời gian | Hiển thị "1 Tháng", "3 Tháng", v.v. |
-
-**Chart/display priority:**
-- Line chart: `chartData[].date`, `chartData[].value`.
-- Series label: `sectorCode`.
-- Grouping/color: `blockType`.
-- Context: `timeframe`, `ingestionTime`.
-
----
-## Lưu ý cho Frontend khi sử dụng Heatmap Realtime SSE
-
-### 1. Frontend phải gọi snapshot trước, mở SSE sau
-
-Luồng xử lý đúng:
-
-```text
-GET /stellar-api/v1/heatmap/snapshot
-→ vẽ heatmap ban đầu
-→ mở EventSource /stellar-api/v1/heatmap/stream
-→ nhận event quote để cập nhật từng mã
-```
-
-Không nên chờ SSE để dựng heatmap ban đầu.
-
-### 2. Snapshot là nguồn dữ liệu đồng bộ, SSE là cập nhật realtime
-
-- Snapshot trả trạng thái đầy đủ hiện tại.
-- SSE chỉ đẩy cập nhật mới sau thời điểm client kết nối.
-- SSE không đảm bảo phát lại các event đã bị bỏ lỡ nếu client mất kết nối.
-- Redis Pub/Sub/SSE chỉ dùng để đẩy cập nhật thay đổi, không phải nguồn dữ liệu đầy đủ.
-
-### 3. Khi reconnect hoặc lỗi SSE, frontend nên đồng bộ lại snapshot
-
-- Trình duyệt `EventSource` có cơ chế tự reconnect.
-- Tuy nhiên nếu mất kết nối lâu, frontend nên gọi lại:
-  `GET /stellar-api/v1/heatmap/snapshot`
-- Sau đó tiếp tục nhận cập nhật qua SSE.
-
-### 4. Định dạng sự kiện
-
-Luồng SSE:
-
-```js
-const eventSource = new EventSource("/stellar-api/v1/heatmap/stream");
-
-eventSource.addEventListener("quote", (event) => {
-  const quote = JSON.parse(event.data);
-
-  // Cập nhật theo symbol, không thay toàn bộ heatmap nếu không cần thiết
-  quotesBySymbol[quote.symbol] = {
-    ...quotesBySymbol[quote.symbol],
-    ...quote,
-  };
-
-  renderHeatmap();
-});
-
-eventSource.addEventListener("ping", () => {
-  // Event heartbeat. Không cần cập nhật UI.
-});
-
-eventSource.onerror = () => {
-  // Trình duyệt sẽ tự thử kết nối lại.
-  // Nếu mất kết nối lâu, tải lại snapshot để tránh hiển thị dữ liệu cũ.
-};
-```
-
-Tên event:
-
-- `quote`: cập nhật realtime cho từng quote.
-- `ping`: event heartbeat, dùng để giữ kết nối và kiểm tra trạng thái kết nối.
-
-### 5. Cập nhật theo symbol, không thay thế toàn bộ danh sách
-
-- Nên giữ state dạng map/object theo symbol.
-- Ví dụ: `quotesBySymbol["FPT"] = quote`
-- Khi nhận event mới, chỉ cập nhật mã tương ứng.
-- Không nên dựng lại toàn bộ heatmap nếu không cần thiết.
-
-### 6. Dữ liệu cần dùng cho heatmap
-
-Frontend nên dùng:
-
-- `symbol`: định danh ô
-- `pctChange`: màu ô
-- `marketCap`: kích thước ô
-- `price`, `volume`, `txnValue`: tooltip
-- `status`: trạng thái tăng/giảm/tham chiếu
-- `timestamp` hoặc `lastUpdated`: thời điểm cập nhật
-
-### 7. Lưu ý về reconnect
-
-- Khi trang vừa mở: luôn gọi snapshot.
-- Khi SSE reconnect sau lỗi: nên chống gọi lặp việc tải lại snapshot.
-- Ví dụ chỉ tải lại snapshot nếu mất kết nối trên 5-10 giây.
-- Không mở nhiều `EventSource` trùng nhau cho cùng một màn hình.
-- Khi component bị gỡ khỏi màn hình hoặc người dùng rời trang, phải gọi:
-  `eventSource.close()`
-
+For endpoint-specific 400 conditions, use the parameter tables above. Database, Redis, and unexpected server failures follow Spring Boot's normal error handling and are not converted into a custom API error schema by this project.
