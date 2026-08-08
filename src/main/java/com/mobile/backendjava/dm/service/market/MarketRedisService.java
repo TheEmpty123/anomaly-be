@@ -1,7 +1,12 @@
 package com.mobile.backendjava.dm.service.market;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mobile.backendjava.dm.dto.market.HeatmapQuoteDTO;
+import com.mobile.backendjava.dm.dto.market.IndexImpactHistoryPointDTO;
+import com.mobile.backendjava.dm.dto.market.IndexImpactRankedItemDTO;
+import com.mobile.backendjava.dm.dto.market.IndexImpactSnapshotDTO;
 import com.mobile.backendjava.dm.service.impl.AService;
 import org.springframework.data.domain.Range;
 import org.springframework.data.redis.connection.Limit;
@@ -20,6 +25,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Locale;
 
 @Service
 public class MarketRedisService extends AService {
@@ -27,6 +34,7 @@ public class MarketRedisService extends AService {
     private static final ZoneId MARKET_ZONE = ZoneId.of("Asia/Ho_Chi_Minh");
     private static final DateTimeFormatter DATE_KEY_FORMAT = DateTimeFormatter.BASIC_ISO_DATE;
     private static final int MAX_BREADTH_HISTORY_POINTS = 1000;
+    private static final int MAX_INDEX_IMPACT_HISTORY_POINTS = 1000;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -71,6 +79,45 @@ public class MarketRedisService extends AService {
         return runTask("getBreadthHistory", detail("date", normalizeDate(date)), () -> getBreadth(date, true));
     }
 
+    public Optional<IndexImpactSnapshotDTO> getLatestIndexImpact(String indexCode) {
+        String normalizedIndexCode = normalizeIndexCode(indexCode);
+        return runTask("getLatestIndexImpact",
+                details(detail("indexCode", normalizedIndexCode)),
+                () -> {
+                    String key = "index:impact:" + normalizedIndexCode + ":latest";
+                    String payload = redisTemplate.opsForValue().get(key);
+                    if (isBlankOrNull(payload)) {
+                        return Optional.empty();
+                    }
+
+                    try {
+                        IndexImpactSnapshotDTO snapshot = objectMapper.readValue(payload, IndexImpactSnapshotDTO.class);
+                        normalizeSnapshot(snapshot, normalizedIndexCode);
+                        return Optional.of(snapshot);
+                    } catch (JsonProcessingException ex) {
+                        throw new IllegalStateException("Invalid index-impact snapshot payload for " + normalizedIndexCode, ex);
+                    }
+                });
+    }
+
+    public List<IndexImpactHistoryPointDTO> getIndexImpactHistory(String indexCode, String date) {
+        String normalizedIndexCode = normalizeIndexCode(indexCode);
+        String dateKey = normalizeDate(date);
+        return runTask("getIndexImpactHistory",
+                details(detail("indexCode", normalizedIndexCode), detail("date", dateKey)),
+                () -> {
+                    String key = "index:impact:" + normalizedIndexCode + ":history:" + dateKey;
+                    List<MapRecord<String, Object, Object>> records = redisTemplate.opsForStream()
+                            .range(key, Range.unbounded(), Limit.limit().count(MAX_INDEX_IMPACT_HISTORY_POINTS));
+                    if (records == null || records.isEmpty()) {
+                        return List.of();
+                    }
+                    return records.stream()
+                            .map(record -> toIndexImpactHistoryPoint(record.getValue(), normalizedIndexCode))
+                            .toList();
+                });
+    }
+
     private Object getBreadth(String date, boolean history) {
         String dateKey = normalizeDate(date);
         String key = history ? "market:breadth:history:" + dateKey : "market:breadth:" + dateKey;
@@ -93,6 +140,109 @@ public class MarketRedisService extends AService {
             return LocalDate.now(MARKET_ZONE).format(DATE_KEY_FORMAT);
         }
         return date.trim();
+    }
+
+    private String normalizeIndexCode(String indexCode) {
+        if (indexCode == null || indexCode.isBlank()) {
+            throw new IllegalArgumentException("indexCode must not be blank");
+        }
+        String normalized = indexCode.trim().toUpperCase(Locale.ROOT);
+        if (!normalized.matches("[A-Z0-9._-]+")) {
+            throw new IllegalArgumentException("indexCode contains unsupported characters");
+        }
+        return normalized;
+    }
+
+    private void normalizeSnapshot(IndexImpactSnapshotDTO snapshot, String requestedIndexCode) {
+        if (snapshot == null) {
+            throw new IllegalStateException("Index-impact snapshot payload must be a JSON object");
+        }
+        if (isBlankOrNull(snapshot.getIndexCode())) {
+            snapshot.setIndexCode(requestedIndexCode);
+        }
+        if (snapshot.getMissingSymbols() == null) {
+            snapshot.setMissingSymbols(List.of());
+        }
+        if (snapshot.getMissingReasons() == null) {
+            snapshot.setMissingReasons(Map.of());
+        }
+        if (snapshot.getTopPositive() == null) {
+            snapshot.setTopPositive(List.of());
+        }
+        if (snapshot.getTopNegative() == null) {
+            snapshot.setTopNegative(List.of());
+        }
+        if (snapshot.getItems() == null) {
+            snapshot.setItems(List.of());
+        }
+    }
+
+    private IndexImpactHistoryPointDTO toIndexImpactHistoryPoint(Map<Object, Object> fields, String requestedIndexCode) {
+        String indexCode = textValue(fields, "index_code");
+        return IndexImpactHistoryPointDTO.builder()
+                .timestamp(textValue(fields, "timestamp"))
+                .indexCode(isBlankOrNull(indexCode) ? requestedIndexCode : indexCode)
+                .indexValue(decimalValue(fields, "index_value"))
+                .validCount(integerValue(fields, "valid_count"))
+                .missingCount(integerValue(fields, "missing_count"))
+                .totalAdjustedCap(decimalValue(fields, "total_adjusted_cap"))
+                .totalImpactPoint(decimalValue(fields, "total_impact_point"))
+                .topPositive(rankedItems(fields, "top_positive_json"))
+                .topNegative(rankedItems(fields, "top_negative_json"))
+                .build();
+    }
+
+    private List<IndexImpactRankedItemDTO> rankedItems(Map<Object, Object> fields, String fieldName) {
+        String json = textValue(fields, fieldName);
+        if (isBlankOrNull(json)) {
+            return List.of();
+        }
+        try {
+            List<IndexImpactRankedItemDTO> items = objectMapper.readValue(
+                    json,
+                    new TypeReference<List<IndexImpactRankedItemDTO>>() {
+                    });
+            return items == null ? List.of() : items;
+        } catch (JsonProcessingException ex) {
+            throw new IllegalStateException("Invalid " + fieldName + " in index-impact history record", ex);
+        }
+    }
+
+    private Double decimalValue(Map<Object, Object> fields, String fieldName) {
+        String value = textValue(fields, fieldName);
+        if (isBlankOrNull(value)) {
+            return null;
+        }
+        try {
+            Double parsed = Double.valueOf(value.trim());
+            if (!Double.isFinite(parsed)) {
+                throw new NumberFormatException("non-finite number");
+            }
+            return parsed;
+        } catch (NumberFormatException ex) {
+            throw new IllegalStateException("Invalid decimal " + fieldName + " in index-impact history record", ex);
+        }
+    }
+
+    private Integer integerValue(Map<Object, Object> fields, String fieldName) {
+        String value = textValue(fields, fieldName);
+        if (isBlankOrNull(value)) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(value.trim());
+        } catch (NumberFormatException ex) {
+            throw new IllegalStateException("Invalid integer " + fieldName + " in index-impact history record", ex);
+        }
+    }
+
+    private String textValue(Map<Object, Object> fields, String fieldName) {
+        Object value = fields.get(fieldName);
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private boolean isBlankOrNull(String value) {
+        return value == null || value.isBlank() || "null".equalsIgnoreCase(value.trim());
     }
 
     private Map<String, Object> readObject(String key) {
