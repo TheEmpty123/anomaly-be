@@ -130,7 +130,7 @@ Pass real PostgreSQL, Redis, and JWT settings for any non-local deployment. The 
 
 ### Persistent logs
 
-Logback writes the general application log, one log per active controller, and the heatmap SSE-service log to /data/backend/logs. Every file rolls daily or after 100 MB, compresses completed files, and retains 30 days of history.
+Logback writes a general application log, one log per active controller, service, configuration, and utility logs, the heatmap SSE-service log, and a dedicated `heartbeat.log` to /data/backend/logs. Every file rolls daily or after 100 MB, compresses completed files, and retains 30 days of history.
 
 The Docker image declares this directory as a volume. The Helm chart mounts the Kubernetes node directory at the same path with a hostPath volume. The container image runs as its default root user, so the Kubelet-created DirectoryOrCreate path is writable. If the deployment is later changed to a non-root user, the node directory must be owned by or writable to that UID and group before rollout.
 
