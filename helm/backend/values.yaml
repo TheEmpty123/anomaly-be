@@ -5,7 +5,7 @@ replicaCount: 1
 
 image:
   repository: localhost:5000/backend
-  tag: "1.0.10"
+  tag: "1.0.11"
   pullPolicy: IfNotPresent
 
 service:
@@ -13,6 +13,10 @@ service:
   port: 8080
 
 containerPort: 8080
+
+logging:
+  hostPath: /data/backend/logs
+  mountPath: /data/backend/logs
 
 resources:
   requests:

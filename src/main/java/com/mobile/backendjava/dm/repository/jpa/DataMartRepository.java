@@ -1,4 +1,4 @@
-package com.mobile.backendjava.dm.repository;
+package com.mobile.backendjava.dm.repository.jpa;
 
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;

@@ -1,6 +1,7 @@
 package com.mobile.backendjava.dm.config;
 
 import com.mobile.backendjava.dm.service.market.MarketRedisPubSubListener;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,6 +15,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration
 @EnableScheduling
+@Slf4j
 public class RedisConfig {
 
     @Bean
@@ -21,11 +23,13 @@ public class RedisConfig {
             @Value("${spring.data.redis.host}") String host,
             @Value("${spring.data.redis.port}") int port) {
         RedisStandaloneConfiguration configuration = new RedisStandaloneConfiguration(host, port);
+        log.info("event=configuration.redis.connection-factory-configured host={} port={}", host, port);
         return new LettuceConnectionFactory(configuration);
     }
 
     @Bean
     public StringRedisTemplate stringRedisTemplate(RedisConnectionFactory redisConnectionFactory) {
+        log.info("event=configuration.redis.template-configured template=StringRedisTemplate");
         return new StringRedisTemplate(redisConnectionFactory);
     }
 
@@ -37,6 +41,7 @@ public class RedisConfig {
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(redisConnectionFactory);
         container.addMessageListener(marketRedisPubSubListener, new ChannelTopic(channel));
+        log.info("event=configuration.redis.pubsub-listener-configured channel={}", channel);
         return container;
     }
 }

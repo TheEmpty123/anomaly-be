@@ -1,4 +1,4 @@
-package com.mobile.backendjava.dm.repository;
+package com.mobile.backendjava.dm.repository.jpa;
 
 import com.mobile.backendjava.dm.entities.MarketStructureCache;
 import com.mobile.backendjava.dm.entities.MarketStructureCacheId;

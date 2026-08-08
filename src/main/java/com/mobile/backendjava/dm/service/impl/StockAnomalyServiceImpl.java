@@ -2,7 +2,7 @@ package com.mobile.backendjava.dm.service.impl;
 
 import com.mobile.backendjava.dm.dto.anomaly.StockAnomalyDTO;
 import com.mobile.backendjava.dm.entities.StockAnomaly;
-import com.mobile.backendjava.dm.repository.StockAnomalyRepository;
+import com.mobile.backendjava.dm.repository.jpa.StockAnomalyRepository;
 import com.mobile.backendjava.dm.service.StockAnomalyService;
 import org.springframework.stereotype.Service;
 

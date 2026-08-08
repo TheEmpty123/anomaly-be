@@ -2,7 +2,7 @@ package com.mobile.backendjava.dm.service.impl;
 
 import com.mobile.backendjava.dm.dto.market.IndexValuationDTO;
 import com.mobile.backendjava.dm.entities.IndexValuationDaily;
-import com.mobile.backendjava.dm.repository.IndexValuationDailyRepository;
+import com.mobile.backendjava.dm.repository.jpa.IndexValuationDailyRepository;
 import com.mobile.backendjava.dm.service.IndexValuationService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;

@@ -2,7 +2,7 @@ package com.mobile.backendjava.dm.service.impl;
 
 import com.mobile.backendjava.dm.entities.MarketStructureCache;
 import com.mobile.backendjava.dm.model.Timeframe;
-import com.mobile.backendjava.dm.repository.MarketStructureRepository;
+import com.mobile.backendjava.dm.repository.jpa.MarketStructureRepository;
 import com.mobile.backendjava.dm.service.MarketStructureService;
 import org.springframework.stereotype.Service;
 

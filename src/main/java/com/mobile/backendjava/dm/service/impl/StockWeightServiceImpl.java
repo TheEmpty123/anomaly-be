@@ -2,7 +2,7 @@ package com.mobile.backendjava.dm.service.impl;
 
 import com.mobile.backendjava.dm.dto.market.StockWeightDTO;
 import com.mobile.backendjava.dm.entities.StockOhlcv;
-import com.mobile.backendjava.dm.repository.StockOhlcvRepository;
+import com.mobile.backendjava.dm.repository.jpa.StockOhlcvRepository;
 import com.mobile.backendjava.dm.service.StockWeightService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
