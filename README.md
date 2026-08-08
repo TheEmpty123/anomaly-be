@@ -11,7 +11,7 @@ The public API is documented in [docs/API_REFERENCE.md](docs/API_REFERENCE.md). 
 | Runtime | Java 17 |
 | Framework | Spring Boot 3.4.4 |
 | Build tool | Maven Wrapper 3.9.11 |
-| Artifact | com.mobile:be 1.0.9 |
+| Artifact | com.mobile:be 1.0.11 |
 | Default HTTP port | 8080 |
 | Default API prefix | /stellar-api/v1 |
 | Health endpoint | /actuator/health |
