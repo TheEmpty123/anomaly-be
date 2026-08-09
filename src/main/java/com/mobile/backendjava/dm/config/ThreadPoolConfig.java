@@ -1,5 +1,6 @@
 package com.mobile.backendjava.dm.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.ProtocolHandler;
 import org.apache.coyote.http11.AbstractHttp11Protocol;
 import org.springframework.boot.web.embedded.tomcat.TomcatProtocolHandlerCustomizer;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Configuration
+@Slf4j
 public class ThreadPoolConfig {
 
     private static final int CORE_POOL_SIZE = 3;
@@ -35,6 +37,8 @@ public class ThreadPoolConfig {
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.setTaskDecorator(mdcTaskDecorator());
         executor.initialize();
+        log.info("event=configuration.task-executor.initialized executor=applicationTaskExecutor corePoolSize={} maxPoolSize={} queueCapacity={} threadNamePrefix={}",
+                CORE_POOL_SIZE, MAX_POOL_SIZE, QUEUE_CAPACITY, "dm-task-");
         return executor;
     }
 
@@ -45,6 +49,8 @@ public class ThreadPoolConfig {
         scheduler.setThreadNamePrefix("dm-scheduler-");
         scheduler.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         scheduler.initialize();
+        log.info("event=configuration.task-scheduler.initialized poolSize={} threadNamePrefix={}",
+                CORE_POOL_SIZE, "dm-scheduler-");
         return scheduler;
     }
 
@@ -53,6 +59,8 @@ public class ThreadPoolConfig {
             ThreadPoolTaskExecutor applicationTaskExecutor,
             RequestTraceInterceptor requestTraceInterceptor
     ) {
+        log.info("event=configuration.web-mvc-configured asyncExecutor=applicationTaskExecutor interceptor={}",
+                RequestTraceInterceptor.class.getSimpleName());
         return new WebMvcConfigurer() {
             @Override
             public void configureAsyncSupport(AsyncSupportConfigurer configurer) {
@@ -74,6 +82,8 @@ public class ThreadPoolConfig {
                 if (protocolHandler instanceof AbstractHttp11Protocol<?> protocol) {
                     protocol.setMinSpareThreads(CORE_POOL_SIZE);
                     protocol.setMaxThreads(MAX_POOL_SIZE);
+                    log.info("event=configuration.tomcat-thread-pool-configured minSpareThreads={} maxThreads={}",
+                            CORE_POOL_SIZE, MAX_POOL_SIZE);
                 }
             }
         });

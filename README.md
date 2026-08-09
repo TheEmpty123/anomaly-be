@@ -1,365 +1,173 @@
-# 🔍 Anomaly Detection API
+# Stellar Market Data Backend
 
-Backend FastAPI để phát hiện dị thường trong dữ liệu thị trường chứng chỉ với kết nối PostgreSQL an toàn.
+Spring Boot service for reading market-data and analytics views from the Stellar data mart. It provides REST endpoints for OHLCV, index valuation and impact, stock anomalies, foreign flow, sector analytics, and Redis-backed realtime market data.
 
-## 📋 Mục tiêu (User Story)
+The public API is documented in [docs/API_REFERENCE.md](docs/API_REFERENCE.md). That document is the endpoint-level contract; this README focuses on running and operating the service.
 
-Là một Backend Developer, tôi cần:
-- ✅ Thiết lập bộ khung FastAPI
-- ✅ Cấu hình kết nối an toàn tới PostgreSQL (DWH + DM)
-- ✅ Tạo API trả về dữ liệu giả (Mock JSON) 
-- ✅ Frontend có thể dev song song ngay lập tức mà không bị block
+## At a glance
 
-## 🏗️ Cấu trúc Project
-
-```
-flaskAPI/
-├── main.py                    # Entry point - Chạy server FastAPI
-├── config.py                  # Cấu hình từ .env (pydantic-settings)
-├── database.py                # Kết nối PostgreSQL (DM + DWH)
-├── schemas.py                 # Pydantic models để validate request/response
-├── requirements.txt           # Python dependencies
-├── .env                        # Biến môi trường (SSH Tunnel, DB credentials)
-├── mock-data.json            # Dữ liệu giả cho Frontend dev
-│
-├── api/
-│   ├── __init__.py
-│   └── routes.py             # API endpoints (/api/anomalies/*)
-│
-├── utils/
-│   ├── __init__.py
-│   └── mock_loader.py        # Hàm load mock data từ mock-data.json
-│
-└── README.md                  # Tài liệu này
-```
-
-## 🚀 Bắt Đầu Nhanh
-
-### 1️⃣ Yêu Cầu
-
-- Python 3.10+
-- PostgreSQL (có thể truy cập qua SSH Tunnel)
-- SSH client (để mở tunnel đến ngrok.io)
-
-### 2️⃣ Cài Đặt Dependencies
-
-```powershell
-pip install -r requirements.txt
-```
-
-### 3️⃣ Mở SSH Tunnel (Terminal 1)
-
-Chạy lệnh này **trước** khi start server:
-
-```powershell
-ssh -N -L 5432:172.17.0.1:5432 dev-1@0.tcp.ap.ngrok.io -p 12721
-```
-
-**Khi được hỏi password, nhập:** `1`
-
-⚠️ **Giữ terminal này chạy liên tục!**
-
-### 4️⃣ Chạy FastAPI Server (Terminal 2)
-
-```powershell
-cd C:\Users\toang\Downloads\Study\anomaly\backend\flaskAPI
-python main.py
-```
-
-**Kết quả:**
-```
-🚀 Starting Anomaly Detection API...
-📍 Debug Mode: False
-📍 API Prefix: /api
-
-🔍 Testing Database Connections...
-✓ Data Mart (DM) connection successful
-✓ Data Warehouse (DWH) connection successful
-
-INFO:     Uvicorn running on http://0.0.0.0:8000
-```
-
-## 📚 API Endpoints
-
-### 🏥 Health Check
-
-```bash
-GET http://localhost:8000/api/health
-```
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "service": "Anomaly Detection API",
-  "dm_connected": true,
-  "dwh_connected": true
-}
-```
-
-### 📊 Lấy Anomaly cho Ticker Cụ Thể
-
-```bash
-GET http://localhost:8000/api/anomalies/{ticker}
-```
-
-**Example:**
-```bash
-curl http://localhost:8000/api/anomalies/VIX
-```
-
-**Response:**
-```json
-{
-  "symbol": "VIX",
-  "date": "2026-04-22",
-  "ai_analysis": {
-    "anomaly_score": 0.88,
-    "threshold": 0.70,
-    "is_anomaly": true,
-    "status_label": "CẢNH BÁO",
-    "risk_level": "High"
-  },
-  "raw_features": {
-    "price_change_pct": 0.2,
-    "volume_ratio": 3.8,
-    "amplitude_pct": 1.5
-  },
-  "explanation": "Khối lượng giao dịch cao gấp 3.8 lần trung bình 20 phiên, nhưng giá gần như không đổi (+0.2%). Dấu hiệu có lệnh trao tay hoặc tổ chức gom hàng khối lượng lớn."
-}
-```
-
-### 📋 Lấy Tất Cả Anomalies
-
-```bash
-GET http://localhost:8000/api/anomalies
-```
-
-### 🔍 Lọc theo Risk Level
-
-```bash
-GET http://localhost:8000/api/anomalies?risk_level=High
-GET http://localhost:8000/api/anomalies?risk_level=Critical
-```
-
-### ℹ️ Lấy Danh Sách Ticker Có Sẵn
-
-```bash
-GET http://localhost:8000/api/info/tickers
-```
-
-**Response:**
-```json
-["FPT", "HAG", "VIX"]
-```
-
-### ✅ Verify Anomaly (Placeholder)
-
-```bash
-POST http://localhost:8000/api/anomalies/{ticker}/verify?is_valid=true
-```
-
-**Response:**
-```json
-{
-  "ticker": "VIX",
-  "symbol": "VIX",
-  "verification_result": true,
-  "message": "✓ Verification recorded in mock mode (DB integration pending)",
-  "note": "Data sẽ được lưu vào bảng 'anomaly_feedback' trong Data Mart sau khi integrate DB"
-}
-```
-
-## 📖 Swagger UI Documentation
-
-Truy cập tại: **http://localhost:8000/api/docs**
-
-- Xem chi tiết tất cả endpoints
-- Test API trực tiếp
-- Xem request/response examples
-
-## 🗄️ Cấu Hình Database
-
-### File `.env` - Biến Môi Trường
-
-```dotenv
-# 1. DATA WAREHOUSE (Cho AI lấy data OHLCV)
-DWH_USER=
-DWH_PASSWORD=
-DWH_HOST=localhost          # SSH Tunnel forward to 5432
-DWH_PORT=5432
-DWH_NAME=core_data_warehouse
-
-# 2. DATA MART (Cho Frontend API)
-DM_USER=
-DM_PASSWORD=
-DM_HOST=localhost           # SSH Tunnel forward to 5432
-DM_PORT=5432
-DM_NAME=stellar_dm
-```
-
-### Cơ Chế Kết Nối
-
-```
-FastAPI (localhost:8000)
-    ↓
-    ├─→ Data Mart (DM) - stellar_dm
-    │   └─→ Phục vụ Frontend API (/api/anomalies/*)
-    │
-    └─→ Data Warehouse (DWH) - core_data_warehouse
-        └─→ Lấy OHLCV data cho AI Processing
-```
-
-## 🎯 Current Mode: Mock Data
-
-### ✅ Hiện Tại
-- API sử dụng **Mock Data** từ `mock-data.json`
-- Frontend có thể dev ngay mà không cần DB
-- Không bị block chờ DB connection
-
-### 🔮 Tương Lai (Integration)
-```python
-# Hiện tại (routes.py)
-anomaly = get_mock_anomaly(ticker)  # ← Mock
-
-# Tương lai
-# anomaly = db.query(Anomaly).filter(Anomaly.symbol == ticker).first()  # ← DB
-```
-
-## 🔗 Frontend Integration
-
-Frontend team có thể ngay lập tức:
-
-### 1. Lấy dữ liệu dị thường
-```javascript
-fetch('http://localhost:8000/api/anomalies/VIX')
-  .then(r => r.json())
-  .then(data => console.log(data))
-```
-
-### 2. Lọc theo risk level
-```javascript
-fetch('http://localhost:8000/api/anomalies?risk_level=High')
-  .then(r => r.json())
-  .then(data => console.log(data))
-```
-
-### 3. Xem tất cả ticker
-```javascript
-fetch('http://localhost:8000/api/info/tickers')
-  .then(r => r.json())
-  .then(tickers => console.log(tickers))
-```
-
-## 🐛 Debugging
-
-### Logs
-
-Server logs sẽ show:
-```
-INFO:     Request: GET /api/anomalies/VIX
-DEBUG:    → GET /api/anomalies/VIX
-INFO:     Fetched anomaly data for ticker: VIX
-DEBUG:    ← 200
-```
-
-### Enable Debug Mode
-
-Sửa trong `main.py`:
-```python
-settings.DEBUG = True
-```
-
-Hoặc trong `.env`:
-```dotenv
-DEBUG=True
-```
-
-## 📦 Dependencies
-
-| Package | Version | Mục đích |
-|---------|---------|---------|
-| fastapi | 0.104.1 | Web framework |
-| uvicorn | 0.24.0 | ASGI server |
-| sqlalchemy | 2.0.23 | ORM |
-| psycopg2-binary | 2.9.9 | PostgreSQL driver |
-| pydantic | 2.5.0 | Data validation |
-| pydantic-settings | 2.1.0 | Environment config |
-| python-dotenv | 1.0.0 | Load .env file |
-
-## 🚨 Troubleshooting
-
-### ❌ "Connection refused" - PostgreSQL
-
-**Giải pháp:**
-1. Kiểm tra SSH Tunnel chạy chưa?
-   ```powershell
-   ssh -N -L 5432:172.17.0.1:5432 dev-1@0.tcp.ap.ngrok.io -p 12721
-   ```
-2. Kiểm tra port 5432 đã được forward?
-   ```powershell
-   netstat -an | findstr 5432
-   ```
-
-### ❌ "ModuleNotFoundError"
-
-**Giải pháp:**
-```powershell
-pip install -r requirements.txt
-```
-
-### ❌ Port 8000 already in use
-
-**Giải pháp:**
-```powershell
-# Tìm process đang dùng port 8000
-netstat -ano | findstr :8000
-
-# Kill process (replace PID)
-taskkill /PID <PID> /F
-```
-
-## 📝 Next Steps - Roadmap
-
-### Phase 1: ✅ Mock Setup (Hiện tại)
-- [x] FastAPI framework
-- [x] PostgreSQL cấu hình
-- [x] Mock JSON endpoints
-- [x] Swagger documentation
-
-### Phase 2: 🔮 Database Integration
-- [ ] Create SQLAlchemy models
-- [ ] Implement ORM queries
-- [ ] Replace mock_loader with DB queries
-- [ ] Add database migrations
-
-### Phase 3: 🤖 AI Processing
-- [ ] Integrate anomaly detection model
-- [ ] Add feature engineering pipeline
-- [ ] Implement async AI processing
-
-### Phase 4: 📊 Real-time Updates
-- [ ] WebSocket support
-- [ ] Real-time anomaly alerts
-- [ ] Data streaming pipeline
-
-## 🤝 Contributing
-
-Khi integrate database:
-1. Update `routes.py` - Replace mock với DB queries
-2. Keep same response schema
-3. Maintain API compatibility
-
-## 📞 Support
-
-- SSH Tunnel issue: Check ngrok connection
-- DB connection: Verify `.env` credentials
-- API issue: Check `/api/docs` documentation
-- Logs: Check console output
-
----
-
-**Version:** 1.0.0  
-**Status:** Development (Mock Mode)  
-**Last Updated:** 2026-04-23
+| Item | Value |
+| --- | --- |
+| Runtime | Java 17 |
+| Framework | Spring Boot 3.4.4 |
+| Build tool | Maven Wrapper 3.9.11 |
+| Artifact | com.mobile:be 1.0.11 |
+| Default HTTP port | 8080 |
+| Default API prefix | /stellar-api/v1 |
+| Health endpoint | /actuator/health |
+| Data stores | PostgreSQL data mart and Redis |
 
+## Prerequisites
+
+- JDK 17
+- A reachable PostgreSQL instance containing the pre-provisioned Stellar data-mart schema
+- A reachable Redis instance
+
+The application maps existing JPA entities but does not include Flyway, Liquibase, or schema-initialization configuration. It expects the database schema and data to be provisioned outside this repository.
+
+## Configure a local environment
+
+The defaults in application.properties are development conveniences only. Set explicit environment variables for a real environment and never commit secrets.
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| DM_URL | Complete JDBC URL; takes precedence over the composed DM connection | jdbc:postgresql://localhost:5432/stellar_dm |
+| DM_HOST, DM_PORT, DM_NAME | Components used when DM_URL is not set | localhost, 5432, stellar_dm |
+| DM_USER, DM_PASSWORD | Data-mart credentials | postgres, 1 |
+| REDIS_HOST, REDIS_PORT | Redis connection | localhost, 6379 |
+| MARKET_PUBSUB_CHANNEL | Redis Pub/Sub channel for market updates | market_channel |
+| SERVER_PORT | HTTP port | 8080 |
+| STELLAR_JWT_ENABLED | Enables JWT validation for the default Stellar API path | true |
+| STELLAR_JWT_SECRET | HMAC signing secret; use a strong secret of at least 32 bytes for HS256 | dev-secret-change-me (unsafe and too short for HS256) |
+| STELLAR_JWT_ISSUER | Required JWT issuer claim | stellar-api |
+| STELLAR_JWT_AUDIENCE | Required JWT audience claim | stellar-backend |
+| API_STELLAR_BASE_PATH | Controller base path | /stellar-api/v1 |
+
+Standard Spring variables such as SPRING_DATASOURCE_URL, SPRING_DATASOURCE_USERNAME, and SPRING_DATASOURCE_PASSWORD also work and are used by the Helm deployment.
+
+For a local exploratory run without a token issuer, disable JWT only in your shell:
+
+~~~powershell
+$env:DM_URL = "jdbc:postgresql://localhost:5432/stellar_dm"
+$env:DM_USER = "postgres"
+$env:DM_PASSWORD = "<password>"
+$env:REDIS_HOST = "localhost"
+$env:REDIS_PORT = "6379"
+$env:STELLAR_JWT_ENABLED = "false"   # Local development only
+~~~
+
+Important: while JWT is enabled, keep the default API prefix. Controller mappings can be changed with API_STELLAR_BASE_PATH, but the current JWT filter and its SSE query-token fallback are coded for the literal default path /stellar-api/v1.
+
+## Build and run
+
+On Windows:
+
+~~~powershell
+.\mvnw.cmd clean package
+.\mvnw.cmd spring-boot:run
+~~~
+
+On macOS or Linux:
+
+~~~bash
+./mvnw clean package
+./mvnw spring-boot:run
+~~~
+
+The packaged application is written to target/backend.jar:
+
+~~~powershell
+java -jar target/backend.jar
+~~~
+
+Verify that the service is running:
+
+~~~powershell
+curl http://localhost:8080/actuator/health
+~~~
+
+With JWT enabled, Stellar API requests require a valid token:
+
+~~~powershell
+curl -H "Authorization: Bearer <JWT_TOKEN>" "http://localhost:8080/stellar-api/v1/ohlcv/latest?timeframe=1d"
+~~~
+
+There is no Swagger/OpenAPI UI configured in this project.
+
+## Tests
+
+~~~powershell
+.\mvnw.cmd test
+~~~
+
+The test suite includes a Spring context test, so it starts the application's PostgreSQL and Redis integrations. Both services must be reachable with the configured credentials; there is no isolated test profile or Testcontainers setup. If Redis is unavailable, the context test fails during listener startup.
+
+## API behavior
+
+- All endpoints below the default Stellar path require a JWT when STELLAR_JWT_ENABLED is true.
+- Every HTTP response includes an X-Correlation-ID header for request tracing.
+- The only exposed Actuator endpoint is /actuator/health. Health details are enabled by configuration, so restrict access appropriately in production.
+- Empty collections are returned as 200 with an empty array unless an endpoint explicitly documents 204 No Content.
+
+See [the full API reference](docs/API_REFERENCE.md) for endpoint parameters, response schemas, pagination limits, JWT requirements, and SSE usage.
+
+## Docker
+
+The Dockerfile uses a Maven/Temurin 17 build stage and produces an image that exposes port 8080.
+
+~~~bash
+docker build -t stellar-backend:local .
+docker run --rm -p 8080:8080 -v /data/backend/logs:/data/backend/logs \
+  -e SPRING_DATASOURCE_URL="jdbc:postgresql://host.docker.internal:5432/stellar_dm" \
+  -e SPRING_DATASOURCE_USERNAME="postgres" \
+  -e SPRING_DATASOURCE_PASSWORD="<password>" \
+  -e REDIS_HOST="host.docker.internal" \
+  -e STELLAR_JWT_ENABLED="false" \
+  stellar-backend:local
+~~~
+
+Pass real PostgreSQL, Redis, and JWT settings for any non-local deployment. The image build skips tests; run the appropriate verification before building a release image.
+
+### Persistent logs
+
+Logback writes a general application log, one log per active controller, service, configuration, and utility logs, the heatmap SSE-service log, and a dedicated `heartbeat.log` to /data/backend/logs. Every file rolls daily or after 100 MB, compresses completed files, and retains 30 days of history.
+
+The Docker image declares this directory as a volume. The Helm chart mounts the Kubernetes node directory at the same path with a hostPath volume. The container image runs as its default root user, so the Kubelet-created DirectoryOrCreate path is writable. If the deployment is later changed to a non-root user, the node directory must be owned by or writable to that UID and group before rollout.
+
+## Helm and CI/CD
+
+The Helm chart lives in helm/backend. It deploys a ClusterIP service on port 8080, mounts /data/backend/logs from the node for persistent logs, and reads database credentials and the JWT secret from the configured Kubernetes secret (backend-db-secret by default).
+
+~~~bash
+helm upgrade --install backend helm/backend
+~~~
+
+The Jenkins pipeline reads the Maven project version, builds target/backend.jar, pushes localhost:5000/backend:<version>, and runs Helm with the matching image tag. Review [VersionControl.md](VersionControl.md) before changing release versions.
+
+The chart currently does not define readiness or liveness probes. Add them before relying on automated Kubernetes traffic management.
+
+## Project layout
+
+~~~text
+src/main/java/com/mobile/backendjava/
+  BackendJavaApplication.java
+  dm/config/                 # JWT, Redis, request tracing, executor configuration
+  dm/controllers/stellar/    # Active HTTP API controllers
+  dm/dto/                    # Response and query DTOs
+  dm/entities/               # JPA mappings for the data mart
+  dm/repository/jpa/         # PostgreSQL/JPA repositories
+  dm/repository/redis/       # Reserved for Spring Data Redis repositories
+  dm/service/                # Business and Redis/SSE services
+src/main/resources/
+  application.properties
+docs/
+  API_REFERENCE.md
+helm/backend/
+Dockerfile
+Jenkinsfile
+~~~
+
+## Documentation
+
+- [API reference](docs/API_REFERENCE.md)
+- [Versioning and release notes](VersionControl.md)

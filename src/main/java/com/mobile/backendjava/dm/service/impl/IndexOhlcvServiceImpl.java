@@ -2,7 +2,7 @@ package com.mobile.backendjava.dm.service.impl;
 
 import com.mobile.backendjava.dm.dto.market.IndexOhlcvDTO;
 import com.mobile.backendjava.dm.entities.IndexOhlcv;
-import com.mobile.backendjava.dm.repository.IndexOhlcvRepository;
+import com.mobile.backendjava.dm.repository.jpa.IndexOhlcvRepository;
 import com.mobile.backendjava.dm.service.IndexOhlcvService;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;

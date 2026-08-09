@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <property name="LOG_PATTERN"
+              value="%d{yyyy-MM-dd'T'HH:mm:ss.SSSXXX} %-5level [%thread] [%logger{48}] [correlationId=%X{correlationId:-}] %msg%n"/>
+
+    <appender name="APPLICATION_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/application.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/application.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_FOREIGN_FLOW_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-foreign-flow.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-foreign-flow.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_HEATMAP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-heatmap.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-heatmap.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_INDEX_IMPACT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-index-impact.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-index-impact.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_INDEX_OHLCV_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-index-ohlcv.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-index-ohlcv.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_INDEX_VALUATION_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-index-valuation.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-index-valuation.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_MARKET_BREADTH_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-market-breadth.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-market-breadth.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_MARKET_STRUCTURE_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-market-structure.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-market-structure.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_OHLCV_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-ohlcv.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-ohlcv.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_RRG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-rrg.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-rrg.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_SECTOR_PERFORMANCE_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-sector-performance.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-sector-performance.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_STOCK_ANOMALY_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-stock-anomaly.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-stock-anomaly.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_STOCK_WEIGHT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-stock-weight.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-stock-weight.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONTROLLER_SYMBOL_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/controller-symbol.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/controller-symbol.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="SSE_HEATMAP_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/sse-heatmap.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/sse-heatmap.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="SERVICE_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/service.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/service.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="CONFIGURATION_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/configuration.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/configuration.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="UTILITY_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/utility.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/utility.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <appender name="HEARTBEAT_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/data/backend/logs/heartbeat.log</file>
+        <append>true</append>
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>/data/backend/logs/heartbeat.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxFileSize>100MB</maxFileSize>
+            <maxHistory>30</maxHistory>
+            <totalSizeCap>3GB</totalSizeCap>
+        </rollingPolicy>
+        <encoder><charset>UTF-8</charset><pattern>${LOG_PATTERN}</pattern></encoder>
+    </appender>
+
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarForeignFlowController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_FOREIGN_FLOW_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarHeatmapController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_HEATMAP_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarIndexImpactController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_INDEX_IMPACT_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarIndexOhlcvController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_INDEX_OHLCV_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarIndexValuationController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_INDEX_VALUATION_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarMarketBreadthController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_MARKET_BREADTH_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarMarketStructureController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_MARKET_STRUCTURE_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarOhlcvController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_OHLCV_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarRRGController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_RRG_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarSectorPerformanceController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_SECTOR_PERFORMANCE_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarStockAnomalyController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_STOCK_ANOMALY_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarStockWeightController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_STOCK_WEIGHT_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.controllers.stellar.StellarSymbolController" level="INFO" additivity="false"><appender-ref ref="CONTROLLER_SYMBOL_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.service.market.HeatmapSseService.heartbeat" level="INFO" additivity="false"><appender-ref ref="HEARTBEAT_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.service.market.HeatmapSseService" level="INFO" additivity="false"><appender-ref ref="SSE_HEATMAP_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.service" level="INFO" additivity="false"><appender-ref ref="SERVICE_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.config" level="INFO" additivity="false"><appender-ref ref="CONFIGURATION_FILE"/></logger>
+    <logger name="com.mobile.backendjava.dm.utils" level="INFO" additivity="false"><appender-ref ref="UTILITY_FILE"/></logger>
+    <logger name="com.mobile.backendjava" level="INFO" additivity="false"><appender-ref ref="APPLICATION_FILE"/></logger>
+
+    <root level="INFO"><appender-ref ref="APPLICATION_FILE"/></root>
+</configuration>
